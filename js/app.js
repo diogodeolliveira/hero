@@ -321,27 +321,24 @@ function blocoConta() {
 
 const TELAS = { inicio: telaInicio, batalha: telaBatalha, equipe: telaEquipe, herois: telaHerois, invocar: telaInvocar, guilda: telaGuilda };
 
-// ===== Reprodução da batalha =====
+// ===== Batalha no campo =====
 let B = null;
-function htmlUnidade(u) {
-  return `<div class="un${u.chefe ? ' chefe' : ''}" id="u${u.uid}" style="--cl:${CLASSES[u.classe].cor}">
-    <div class="un-corpo">${boneco(u.ap)}<div class="flutuantes"></div></div>
-    <div class="un-nome">${esc(u.nome)}</div>
-    <div class="vida"><i style="width:100%"></i><b style="width:0"></b></div>
-  </div>`;
-}
-function assistir({ sim, titulo, premio, extra = '' }) {
-  const lado = l => sim.inicio.filter(u => u.lado === l);
-  const fileira = (l, frente) => `<div class="arena-fileira">${lado(l).filter(u => frente ? u.vaga < FRENTE : u.vaga >= FRENTE).map(htmlUnidade).join('')}</div>`;
+function assistir({ sim, titulo, premio, extra = '', regiao, nomeInimigo }) {
   const el = document.getElementById('batalha');
   el.innerHTML = `<div class="batalha-caixa">
-      <div class="batalha-titulo">${esc(titulo)}</div>
-      <div class="arena">
-        <div class="arena-lado inimigo">${fileira(1, false)}${fileira(1, true)}</div>
-        <div class="anuncio" id="banuncio"></div>
-        <div class="arena-lado aliado">${fileira(0, true)}${fileira(0, false)}</div>
+      <div class="placar-hud">
+        <div class="ph-time ph-ali"><span>${esc(S.guilda.nome)}</span></div>
+        <div class="ph-centro">
+          <div class="ph-num"><b id="bvivos0">5</b><i>✕</i><b id="bvivos1">5</b></div>
+          <div class="ph-turno" id="bturno">Turno 0</div>
+        </div>
+        <div class="ph-time ph-ini"><span>${esc(nomeInimigo)}</span></div>
       </div>
-      <ol class="registro" id="bregistro"></ol>
+      <div class="campo-wrap" id="bcampo">
+        <canvas id="campo"></canvas><canvas id="campo-hud"></canvas>
+        <div class="fim-painel" id="bfim" hidden></div>
+      </div>
+      <div class="narracao" id="bnarra">${esc(titulo)}</div>
       <div class="batalha-acoes" id="bacoes">
         <button class="chip ativo" data-acao="vel" data-v="1">1x</button>
         <button class="chip" data-acao="vel" data-v="2">2x</button>
@@ -351,76 +348,21 @@ function assistir({ sim, titulo, premio, extra = '' }) {
     </div>`;
   el.hidden = false;
   document.body.classList.add('travado');
-  B = { sim, idx: 0, vel: 1, timer: null, premio, extra, fim: false,
-    nome: Object.fromEntries(sim.inicio.map(u => [u.uid, u])) };
-  B.timer = setTimeout(passo, 600);
-}
-function aplicarAlvo(a, animar) {
-  const u = B.nome[a.uid];
-  const el = document.getElementById('u' + a.uid);
-  el.querySelector('.vida i').style.width = (a.hp / u.hpMax * 100) + '%';
-  el.querySelector('.vida b').style.width = Math.min(100, a.escudo / u.hpMax * 100) + '%';
-  if (a.morreu) el.classList.add('caido');
-  if (!animar) return;
-  const n = document.createElement('span');
-  n.className = a.cura ? 'num cura' : a.crit ? 'num crit' : 'num';
-  n.textContent = a.cura ? '+' + a.cura : (a.crit ? a.dano + '!' : a.dano);
-  el.querySelector('.flutuantes').appendChild(n);
-  setTimeout(() => n.remove(), 1100);
-  el.classList.remove('atingido'); void el.offsetWidth; el.classList.add(a.cura ? 'curado' : 'atingido');
-}
-function passo() {
-  if (!B || B.fim) return;
-  if (B.idx >= B.sim.eventos.length) return finalizar();
-  const ev = B.sim.eventos[B.idx++];
-  const ator = B.nome[ev.ator];
-  const elA = document.getElementById('u' + ev.ator);
-  elA.classList.remove('age', 'age-hab'); void elA.offsetWidth;
-  elA.classList.add(ev.hab ? 'age-hab' : 'age');
-  if (ev.hab) {
-    const an = document.getElementById('banuncio');
-    an.innerHTML = `<b style="color:${CLASSES[ator.classe].cor}">${esc(ator.nome)}</b> ${esc(ev.hab)}`;
-    an.classList.remove('ver'); void an.offsetWidth; an.classList.add('ver');
-  }
-  setTimeout(() => {
-    if (!B || B.fim) return;
-    ev.alvos.forEach(a => aplicarAlvo(a, true));
-    if (ev.escudoAtor) aplicarAlvo({ uid: ev.ator, hp: lerHp(ev.ator), escudo: ev.escudoAtor }, false);
-    registrarLinha(ev);
-  }, 220 / B.vel);
-  B.timer = setTimeout(passo, (ev.hab ? 1000 : 620) / B.vel);
-}
-// vida atual mostrada de uma unidade (último valor conhecido nos eventos já exibidos)
-function lerHp(uid) {
-  for (let i = B.idx - 1; i >= 0; i--) {
-    const a = B.sim.eventos[i].alvos.find(x => x.uid === uid);
-    if (a) return a.hp;
-  }
-  return B.nome[uid].hpMax;
-}
-function registrarLinha(ev) {
-  const ator = B.nome[ev.ator];
-  const cura = ev.alvos.some(a => a.cura);
-  const total = ev.alvos.reduce((s, a) => s + (a.cura || a.dano || 0), 0);
-  const alvo = ev.alvos.length === 1 ? esc(B.nome[ev.alvos[0].uid].nome) : `${ev.alvos.length} alvos`;
-  const mortes = ev.alvos.filter(a => a.morreu).map(a => esc(B.nome[a.uid].nome));
-  const lado = ator.lado ? 'l-ini' : 'l-ali';
-  document.getElementById('bregistro').insertAdjacentHTML('afterbegin',
-    `<li class="${lado}"><b>${esc(ator.nome)}</b> ${ev.hab ? `usa <em>${esc(ev.hab)}</em> em` : cura ? 'cura' : 'ataca'} ${alvo}: <span class="${cura ? 'cura' : 'dano'}">${cura ? '+' : ''}${total}</span>${mortes.length ? ` · <span class="morte">${mortes.join(', ')} caiu</span>` : ''}</li>`);
+  B = { sim, premio, extra, fim: false };
+  Campo.iniciar({ sim, regiao, aoFim: finalizar });
 }
 function finalizar() {
   if (!B || B.fim) return;
-  clearTimeout(B.timer);
   B.fim = true;
-  for (; B.idx < B.sim.eventos.length; B.idx++) B.sim.eventos[B.idx].alvos.forEach(a => aplicarAlvo(a, false));
+  Campo.pular();
   const venceu = B.sim.vencedor === 0;
-  document.getElementById('banuncio').classList.remove('ver');
-  document.getElementById('bacoes').innerHTML = `<div class="fim">
-      <div class="resultado ${venceu ? 'res-v' : 'res-d'}">${venceu ? 'Vitória' : 'Derrota'}</div>
-      <div>${moedas(B.premio)} ganhas</div>
-      ${B.extra}
-      <button class="btn" data-acao="fecharBatalha">Continuar</button>
-    </div>`;
+  const painel = document.getElementById('bfim');
+  painel.innerHTML = `<div class="resultado ${venceu ? 'res-v' : 'res-d'}">${venceu ? 'Vitória' : 'Derrota'}</div>
+    <div>${moedas(B.premio)} ganhas</div>
+    ${B.extra}
+    <button class="btn" data-acao="fecharBatalha">Continuar</button>`;
+  painel.hidden = false;
+  document.getElementById('bacoes').hidden = true;
 }
 
 // ===== Invocação: revelar cartas =====
@@ -533,7 +475,8 @@ const ACOES = {
     }
     registrar('Campanha', `Fase ${fase} · ${regiaoDa(fase)}`, venceu);
     salvar();
-    assistir({ sim, premio, extra, titulo: `Fase ${fase} · ${regiaoDa(fase)}` });
+    assistir({ sim, premio, extra, titulo: `Fase ${fase} · ${regiaoDa(fase)}`, regiao: regiaoDa(fase),
+      nomeInimigo: ehChefe(fase) ? `Chefe · Fase ${fase}` : `Fase ${fase}` });
   },
   batalharDesafio: d => {
     garantirDia();
@@ -548,15 +491,15 @@ const ACOES = {
     S.diario.feitos[i] = { venceu };
     registrar('Desafio', dif.nome, venceu);
     salvar();
-    assistir({ sim, premio, titulo: `Desafio do dia · ${dif.nome}` });
+    assistir({ sim, premio, titulo: `Desafio do dia · ${dif.nome}`, regiao: regiaoDa(faseEq), nomeInimigo: `Desafio ${dif.nome}` });
   },
   vel: (d, el) => {
     if (!B) return;
-    B.vel = Number(d.v);
+    Campo.velocidade(Number(d.v));
     document.querySelectorAll('#bacoes .chip').forEach(b => b.classList.toggle('ativo', b === el));
   },
   pular: () => finalizar(),
-  fecharBatalha: () => { clearTimeout(B && B.timer); B = null; fechar('batalha'); render(); },
+  fecharBatalha: () => { Campo.parar(); B = null; fechar('batalha'); render(); },
 
   invocar: d => {
     const inv = INVOCACOES.find(x => x.id === d.id);

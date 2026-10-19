@@ -67,8 +67,10 @@ function aparenciaMonstro(nome, classe) {
 
 // ----- partes comuns -----
 const SOMBRA = '<ellipse cx="50" cy="113" rx="24" ry="4.5" fill="#000" opacity=".35"/>';
-function pernas(cor) {
-  return `<rect x="39" y="94" width="9" height="16" rx="3" fill="${cor}"/><rect x="52" y="94" width="9" height="16" rx="3" fill="${cor}"/>`;
+// passo: 0 parado, 1 pé esquerdo levantado, -1 pé direito levantado (quadros da caminhada)
+function pe(a, lado) { return (lado === 'e' ? a.passo > 0 : a.passo < 0) ? -3 : 0; }
+function pernas(cor, a) {
+  return `<rect x="39" y="${94 + pe(a, 'e')}" width="9" height="16" rx="3" fill="${cor}"/><rect x="52" y="${94 + pe(a, 'd')}" width="9" height="16" rx="3" fill="${cor}"/>`;
 }
 function maos(pele, esq = [30, 90], dir = [70, 90]) {
   return `<circle cx="${esq[0]}" cy="${esq[1]}" r="4.6" fill="${pele}"/><circle cx="${dir[0]}" cy="${dir[1]}" r="4.6" fill="${pele}"/>`;
@@ -102,7 +104,7 @@ function bonecoGuerreiro(a) {
   const metalEsc = tom(metal, -0.3);
   const trim = a.trim || tom(a.cor, 0.35);
   return `${a.capa ? capa(a.cor, a.trim) : ''}
-    ${pernas('#3a3346')}
+    ${pernas('#3a3346', a)}
     <path d="M32 98 Q32 72 50 67 Q68 72 68 98Z" fill="${metal}"/>
     <path d="M43 72 h14 v24 l-7 4 l-7 -4z" fill="${a.cor}"/>
     <path d="M43 72 h14 v3 h-14z" fill="${trim}"/>
@@ -130,7 +132,7 @@ function bonecoMago(a) {
   return `${a.capa ? capa(a.cor, a.trim) : ''}
     <rect x="73" y="34" width="3.6" height="76" rx="1.6" fill="#7a5532"/>
     <circle cx="74.8" cy="31" r="10" fill="${brilho}" opacity=".3"/><circle cx="74.8" cy="31" r="5.6" fill="${brilho}"/><circle cx="73" cy="29.5" r="1.6" fill="#fff"/>
-    <ellipse cx="42" cy="109" rx="6" ry="3" fill="#2e2638"/><ellipse cx="58" cy="109" rx="6" ry="3" fill="#2e2638"/>
+    <ellipse cx="42" cy="${109 + pe(a, 'e')}" rx="6" ry="3" fill="#2e2638"/><ellipse cx="58" cy="${109 + pe(a, 'd')}" rx="6" ry="3" fill="#2e2638"/>
     <path d="M31 108 Q33 72 50 67 Q67 72 69 108Z" fill="${a.cor}"/>
     <path d="M31.4 103 h37.2 l.4 5 h-38z" fill="${trim}"/>
     <path d="M50 70 v34" stroke="${trim}" stroke-width="2"/>
@@ -149,7 +151,7 @@ function bonecoArqueiro(a) {
   return `${a.capa ? capa(a.cor, a.trim) : ''}
     <g transform="rotate(18 64 76)"><rect x="60" y="60" width="9" height="28" rx="3" fill="#7a5532"/>
       <path d="M61 60 l2-7 2 7z M65 60 l2-8 2 8z" fill="#e8e0d0"/></g>
-    ${pernas('#4a3524')}
+    ${pernas('#4a3524', a)}
     <path d="M33 98 Q33 72 50 67 Q67 72 67 98Z" fill="${a.cor}"/>
     <path d="M38 69 L50 84 L62 69" stroke="${tom(a.cor, 0.3)}" stroke-width="2.4" fill="none"/>
     <rect x="34" y="88" width="32" height="4" rx="1.5" fill="#6b4a2a"/><rect x="47.5" y="87.5" width="5" height="5" rx="1" fill="${a.trim || '#c9a35a'}"/>
@@ -170,7 +172,7 @@ function bonecoCurandeiro(a) {
     <rect x="73.5" y="30" width="3.6" height="80" rx="1.6" fill="${a.trim ? '#c9a35a' : '#8a6a44'}"/>
     <circle cx="75.3" cy="27" r="11" fill="${brilho}" opacity=".25"/>
     <path d="M72.8 17 h5 v6 h6 v5 h-6 v6 h-5 v-6 h-6 v-5 h6z" fill="${brilho}"/>
-    <ellipse cx="42" cy="109" rx="6" ry="3" fill="#6b5a4a"/><ellipse cx="58" cy="109" rx="6" ry="3" fill="#6b5a4a"/>
+    <ellipse cx="42" cy="${109 + pe(a, 'e')}" rx="6" ry="3" fill="#6b5a4a"/><ellipse cx="58" cy="${109 + pe(a, 'd')}" rx="6" ry="3" fill="#6b5a4a"/>
     <path d="M31 108 Q33 72 50 67 Q67 72 69 108Z" fill="${manto}"/>
     <path d="M44 69 L41 108 h6 l1.5 -38z M56 69 l3 39 h-6 l-1.5 -38z" fill="${a.cor}"/>
     ${a.trim ? `<path d="M31.4 104 h37.2 l.4 4 h-38z" fill="${a.trim}"/>` : ''}
@@ -195,7 +197,7 @@ function bonecoDragao(a) {
   return `${asa}<g transform="translate(100 0) scale(-1 1)">${asa}</g>
     <path d="M64 100 Q88 106 92 88 Q94 80 87 84 Q85 97 66 93Z" fill="${cor}"/>
     <path d="M87 84 L96 74 L93 88Z" fill="${chifre}"/>
-    <ellipse cx="38" cy="108" rx="8" ry="4.5" fill="${escuro}"/><ellipse cx="62" cy="108" rx="8" ry="4.5" fill="${escuro}"/>
+    <ellipse cx="38" cy="${108 + pe(a, 'e')}" rx="8" ry="4.5" fill="${escuro}"/><ellipse cx="62" cy="${108 + pe(a, 'd')}" rx="8" ry="4.5" fill="${escuro}"/>
     <path d="M32 109 l1.5 3 1.5-3 M37 110 l1.5 3 1.5-3 M60 110 l1.5 3 1.5-3 M65 109 l1.5 3 1.5-3" stroke="#fff" stroke-width="1.2" fill="none"/>
     <ellipse cx="50" cy="88" rx="22" ry="21" fill="${cor}"/>
     <ellipse cx="50" cy="92" rx="13" ry="15" fill="${barriga}"/>
@@ -215,6 +217,11 @@ function bonecoDragao(a) {
 }
 
 const DESENHO = { guerreiro: bonecoGuerreiro, mago: bonecoMago, arqueiro: bonecoArqueiro, curandeiro: bonecoCurandeiro, dragao: bonecoDragao };
+
+// SVG completo (com xmlns) para virar imagem no campo de batalha; sem sombra, o campo desenha a dela
+function bonecoSvg(ap, passo, w, h) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="${w}" height="${h}">${DESENHO[ap.classe]({ ...ap, passo })}</svg>`;
+}
 
 function boneco(ap, cls = '') {
   return `<svg class="boneco ${cls}" viewBox="0 0 100 120" aria-hidden="true">${SOMBRA}${DESENHO[ap.classe](ap)}</svg>`;

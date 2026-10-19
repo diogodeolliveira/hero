@@ -334,6 +334,29 @@ p { margin: .4rem 0; }
 .resultado.res-d { color: var(--perigo); background: none; }
 .fim-extra { font-weight: 600; }
 
+/* ===== Campo de batalha ===== */
+#batalha .batalha-caixa { max-width: 980px; height: 100vh; height: 100dvh; min-height: 0; padding-top: 10px; gap: 8px; }
+.placar-hud { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; filter: drop-shadow(0 4px 10px #0008); }
+.ph-time { display: flex; align-items: center; padding: 8px 12px; font: 800 .8rem var(--corpo); text-transform: uppercase; letter-spacing: .03em; min-width: 0; }
+.ph-time span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ph-ali { background: var(--ouro); color: #1a1428; border-radius: 10px 0 0 10px; justify-content: flex-end; }
+.ph-ini { background: #d8352a; color: #fff; border-radius: 0 10px 10px 0; }
+.ph-centro { background: #140f1f; padding: 4px 14px 0; text-align: center; border-radius: 0 0 10px 10px; margin-bottom: -10px; }
+.ph-num { font: 800 1.35rem/1.1 var(--corpo); display: flex; gap: 8px; align-items: center; justify-content: center; }
+.ph-num i { font-style: normal; color: var(--ouro); font-size: 1.1rem; }
+.ph-turno { font-size: .68rem; font-weight: 700; color: var(--suave); padding-bottom: 3px; }
+.campo-wrap { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; border-radius: 14px; overflow: hidden; background: #0b0814; }
+.campo-wrap canvas { grid-area: 1 / 1; image-rendering: pixelated; image-rendering: crisp-edges; }
+#campo-hud { pointer-events: none; }
+.fim-painel { grid-area: 1 / 1; z-index: 2; background: rgba(12, 9, 22, .9); border: 1px solid var(--borda); border-radius: 16px; padding: 18px 26px; text-align: center; display: grid; gap: 6px; justify-items: center; animation: entra .35s ease; }
+.fim-painel[hidden] { display: none; }
+.fim-painel .btn { min-width: 200px; }
+.narracao { background: #140f1f; border: 1px solid var(--borda); border-radius: 10px; padding: 9px 12px; font-size: .85rem; min-height: 40px; }
+.narracao .n-ali { color: var(--ouro); }
+.narracao .n-ini { color: #ff8a7a; }
+.narracao .n-morte { color: var(--perigo); font-weight: 700; }
+.batalha-acoes[hidden] { display: none; }
+
 /* Revelar invocação */
 .revelar-caixa { justify-content: center; text-align: center; }
 .reveladas { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 18px 0; }

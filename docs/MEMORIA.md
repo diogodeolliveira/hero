@@ -62,6 +62,16 @@ Decisões tomadas, regras do jogo e o porquê de cada escolha. Atualize sempre q
 - Épico e lendário ganham capa e detalhes dourados; dragões lendários podem ser dourados.
 - Monstros usam o mesmo corpo da classe, com pele própria (orc verde, esqueleto osso etc.) e olhos vermelhos (`APARENCIA_MONSTRO`).
 
+## Campo de batalha
+
+- `js/campo.js` desenha a batalha num `<canvas>` em baixa resolução, ampliado com `image-rendering: pixelated`. Esse é o "jeitão" pixel art.
+- Os bonecos SVG viram sprites: rasterizados em 28×34, com borda de pixel cortada (alfa > 110), contorno escuro e versões de flash branco (dano) e cinza (caído). São 3 quadros (parado e 2 de passo) para a caminhada.
+- Câmera de cima, levemente inclinada. No celular em pé, os aliados ficam embaixo e os inimigos em cima; na tela larga, aliados à esquerda.
+- Corpo a corpo (Guerreiro, Dragão) **anda até o alvo**; à distância (Arqueiro, Mago, Curandeiro) dispara projétil. Área: chuva de fogo, sopro, colunas de luz.
+- Números e nomes ficam numa segunda camada de alta resolução, para continuar nítidos.
+- Cenário gerado por região (`TERRENOS`): floresta, pântano, minas, gelo, ruínas, vulcão.
+- Inspiração de câmera e estilo: tela de partida do Futnex. A arte é toda nossa.
+
 ## Servidor e publicação
 
 - **Supabase** guarda o save: tabela `saves` (um registro JSON por jogador), protegida por RLS (cada um só lê e grava o próprio).

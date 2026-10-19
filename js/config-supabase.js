@@ -4,6 +4,6 @@
 // A chave "anon" é pública por natureza: quem protege os dados são as regras RLS do banco.
 // Deixe vazio para jogar só com save local.
 const SUPABASE_CONFIG = {
-  url: '',
+  url: 'https://gnaaemyirwkwyftckmom.supabase.co',
   anonKey: '',
 };
