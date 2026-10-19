@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#110e1d">
+  <title>Hero</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topo">
+      <div class="marca">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2l12 5v8c0 8-5.5 13-12 15C9.5 28 4 23 4 15V7z" fill="#f2c14e"/><path d="M16 8l2.2 5.4 5.8.4-4.4 3.8 1.4 5.6L16 20.2l-5 3 1.4-5.6L8 13.8l5.8-.4z" fill="#110e1d"/></svg>
+        <span>Hero</span>
+      </div>
+      <div class="topo-dir">
+        <div id="moedas" class="moedas"></div>
+        <button class="btn-guilda" data-acao="aba" data-aba="guilda" aria-label="Guilda">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main id="tela"></main>
+
+    <nav class="nav">
+      <button data-acao="aba" data-aba="inicio"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Início</button>
+      <button data-acao="aba" data-aba="batalha"><svg viewBox="0 0 24 24"><path d="M5 3l7 7-2 2-7-7V3zM19 3h2v2l-9.5 9.5-2-2zM4 16l4 4-1.5 1.5-1.5-1.5L3 22l-1-1 2-2-1.5-1.5zM20 16l1.5 1.5L20 19l2 2-1 1-2-2-1.5 1.5L16 20z"/></svg>Batalha</button>
+      <button data-acao="aba" data-aba="equipe"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 19c0-3.3 2.7-5 6-5s6 1.7 6 5zM12.5 14.3c1-.2 2.2-.3 3.5-.3 3.3 0 6 1.7 6 5h-6.5c0-1.9-1.1-3.6-3-4.7z"/></svg>Equipe</button>
+      <button data-acao="aba" data-aba="herois"><svg viewBox="0 0 24 24"><path d="M5 3h11a3 3 0 0 1 3 3v15H8a3 3 0 0 1-3-3zM8 17a1 1 0 0 0 0 2h9v-2z"/></svg>Heróis</button>
+      <button data-acao="aba" data-aba="invocar"><svg viewBox="0 0 24 24"><path d="M12 2l2.4 6.6L21 9l-5.2 4.2L17.6 20 12 16.3 6.4 20l1.8-6.8L3 9l6.6-.4z"/></svg>Invocar</button>
+    </nav>
+  </div>
+
+  <div id="batalha" class="camada" hidden></div>
+  <div id="revelar" class="camada" hidden></div>
+  <div id="folha" class="camada folha" hidden></div>
+  <div id="toast" class="toast" role="status"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="js/config-supabase.js"></script>
+  <script src="js/dados.js"></script>
+  <script src="js/bonecos.js"></script>
+  <script src="js/motor.js"></script>
+  <script src="js/nuvem.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
