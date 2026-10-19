@@ -77,6 +77,20 @@ Decisões tomadas, regras do jogo e o porquê de cada escolha. Atualize sempre q
 - Cenário gerado por região (`TERRENOS`): floresta, pântano, minas, gelo, ruínas, vulcão.
 - Inspiração de câmera e estilo: tela de partida do Futnex. A arte é toda nossa.
 
+## Interface (redesign de 2026-10-18)
+
+- Inspiração de organização: Futnex (cena com personagens, botão principal grande, um só destaque de cor, navegação fixa). A identidade é própria: fantasia, roxo escuro e grafite com dourado para progresso e raridade.
+- **Sistema de design** em `css/estilo.css`, dividido em seções: tokens (`--c-*` cores, `--e1..e7` espaçamento, `--r1..r4` raios, `--t-*` tipos), componentes (`.btn` e variantes, `.card`, `.selo`, `.barra`, `.chip`, `.seg`, `.estado`, `.retrato`, `.hcard`, `.modal`, dica `[data-dica]`), telas, batalha, camadas e responsivo.
+- Raridade padronizada com `data-rar="comum|raro|epico|lendario"`, que define `--rar`; a cor da classe vem de `--cl-<classe>`.
+- Ícones próprios em `js/icones.js` (`icone(nome)`), traço de 2px; `ICONE_CLASSE` liga cada classe ao seu ícone.
+- Navegação: barra inferior no celular e abas no topo a partir de 960px. A Guilda (perfil e conta) fica no botão de avatar.
+- **Progressão nova:**
+  - XP e nível da guilda: `xpBatalha` por batalha, `xpParaProximo(n) = 100 + (n − 1) × 50`, e cada nível dá `150 + n × 50` moedas.
+  - 3 missões diárias (`missoesDoDia`): sempre "vencer 3", mais 2 sorteadas pelo dia. Medem coisas reais da batalha (`resumoBatalha`: habilidades usadas, monstros derrotados).
+- Saves antigos ganham `xp`, `nivel` e `missoes` em `migrar()`, sem perder nada.
+- A batalha continua automática: os painéis mostram vida e **carga da habilidade** (turnos % 3), dados que já existiam na simulação. Não há ações manuais.
+- Invocação: regras, custos e chances iguais aos de antes; só a apresentação mudou (vitrine, tabela de chances, destaque da melhor carta).
+
 ## Servidor e publicação
 
 - **Supabase** guarda o save: tabela `saves` (um registro JSON por jogador), protegida por RLS (cada um só lê e grava o próprio).

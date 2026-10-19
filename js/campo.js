@@ -89,13 +89,13 @@ const Campo = (function () {
   }
 
   // ---------- terreno ----------
-  function desenharTerreno(W, H, regiao, r) {
+  function desenharTerreno(W, H, regiao, r, horizontal) {
     const t = TERRENOS[regiao] || TERRENOS['Floresta Sussurrante'];
     const c = novoCanvas(W, H), x = c.getContext('2d');
-    const faixa = Math.max(10, Math.round((C.horizontal ? W : H) / 12));
-    for (let i = 0; i * faixa < (C.horizontal ? W : H); i++) {
+    const faixa = Math.max(10, Math.round((horizontal ? W : H) / 12));
+    for (let i = 0; i * faixa < (horizontal ? W : H); i++) {
       x.fillStyle = t.faixas[i % 2];
-      if (C.horizontal) x.fillRect(i * faixa, 0, faixa, H); else x.fillRect(0, i * faixa, W, faixa);
+      if (horizontal) x.fillRect(i * faixa, 0, faixa, H); else x.fillRect(0, i * faixa, W, faixa);
     }
     for (let i = 0; i < W * H / 9; i++) {
       x.fillStyle = escolher(r, t.ruido);
@@ -149,7 +149,7 @@ const Campo = (function () {
     const cv = document.getElementById('campo'), hud = document.getElementById('campo-hud');
     const cw = wrap.clientWidth, ch = wrap.clientHeight;
     const horizontal = cw > ch * 1.05;
-    const s = Math.max(2, Math.round(cw / (horizontal ? 300 : 130)));
+    const s = Math.max(2, Math.round(cw / (horizontal ? 240 : 130)));
     const W = Math.floor(cw / s), H = Math.floor(ch / s);
     const dpr = window.devicePixelRatio || 1;
     cv.width = W; cv.height = H;
@@ -161,7 +161,7 @@ const Campo = (function () {
     C = { sim, aoFim, W, H, s, dpr, horizontal, ctx: cv.getContext('2d'), hx: hud.getContext('2d'),
       relogio: 0, vel: 1, esperas: [], particulas: [], efeitos: [], textos: [], U: {}, ativo: true, parar: false, idx: 0, ultimo: performance.now() };
     C.ctx.imageSmoothingEnabled = false;
-    C.terreno = desenharTerreno(W, H, regiao, r);
+    C.terreno = desenharTerreno(W, H, regiao, r, horizontal);
 
     const pos = (u, v) => horizontal
       ? { x: W * (0.08 + 0.84 * u), y: H * (0.2 + 0.7 * v) }
@@ -173,9 +173,12 @@ const Campo = (function () {
       const p = pos(u.lado ? 1 - f.u : f.u, u.lado && horizontal ? f.v : (u.lado ? 1 - f.v : f.v));
       p.x += (r() - 0.5) * 6; p.y += (r() - 0.5) * 4;
       C.U[u.uid] = { ...u, x: p.x, y: p.y, hpVis: u.hp, hpReal: u.hp, escudo: 0, dir: horizontal ? (u.lado ? -1 : 1) : 1,
-        destino: null, flash: 0, investida: null, rotulo: 0, morto: false, morteT: 0, spr: sprites[i] };
+        destino: null, flash: 0, investida: null, rotulo: 0, morto: false, morteT: 0, turnos: 0, spr: sprites[i] };
     });
     atualizarPlacar();
+    atualizarElenco();
+    const carregando = wrap.querySelector('.carregando');
+    if (carregando) carregando.remove();
     requestAnimationFrame(quadro);
     rodar();
   }
@@ -233,6 +236,8 @@ const Campo = (function () {
     const alvo = alvos[0] && alvos[0].u;
     const cura = alvos.some(x => x.cura);
     C.turno = (C.turno || 0) + 1;
+    a.turnos++;
+    marcarAtor(a);
     narrar(ev, a, alvo, cura);
     if (ev.hab) a.rotulo = C.relogio + 1300;
 
@@ -305,6 +310,7 @@ const Campo = (function () {
     }
     if (ev.escudoAtor) C.U[ev.ator].escudo = ev.escudoAtor;
     atualizarPlacar();
+    atualizarElenco();
   }
   function texto(u, txt, tipo) { C.textos.push({ x: u.x + (Math.random() - 0.5) * 6, y: u.y - u.spr.h, txt, tipo, ini: C.relogio }); }
 
@@ -333,6 +339,33 @@ const Campo = (function () {
     if (a) a.textContent = vivos(0);
     if (b) b.textContent = vivos(1);
     if (t) t.textContent = 'Turno ' + (C.turno || 0);
+  }
+
+  // Painéis das equipes (fora do canvas): vida e carga da habilidade (a cada 3 turnos)
+  function marcarAtor(a) {
+    document.querySelectorAll('.eb.is-age').forEach(el => el.classList.remove('is-age'));
+    const el = document.getElementById('eb-' + a.uid);
+    if (el) el.classList.add('is-age');
+  }
+  function atualizarElenco() {
+    for (const u of Object.values(C.U)) {
+      const el = document.getElementById('eb-' + u.uid);
+      if (!el) continue;
+      el.querySelector('.barra > i').style.width = (Math.max(0, u.hpReal) / u.hpMax * 100) + '%';
+      const carga = u.turnos % 3;
+      const pips = el.querySelector('.eb__carga');
+      pips.classList.toggle('is-cheia', carga === 2);
+      pips.querySelectorAll('i').forEach((p, i) => p.classList.toggle('is-on', i < carga));
+      el.classList.toggle('is-caido', u.morto);
+    }
+  }
+
+  // Imagem do cenário de uma região (banners das telas)
+  const cenas = new Map();
+  function cenaUrl(regiao, W = 240, H = 120) {
+    const k = regiao + W + 'x' + H;
+    if (!cenas.has(k)) cenas.set(k, desenharTerreno(W, H, regiao, criarRng(hashTexto('cena-' + regiao)), true).toDataURL());
+    return cenas.get(k);
   }
 
   // ---------- quadro a quadro ----------
@@ -528,8 +561,10 @@ const Campo = (function () {
     }
     for (const u of Object.values(C.U)) { u.hpVis = u.hpReal; if (u.destino) { u.destino = null; } }
     C.textos = [];
+    document.querySelectorAll('.eb.is-age').forEach(el => el.classList.remove('is-age'));
+    atualizarElenco();
   }
   function parar() { if (C) { C.ativo = false; C.parar = true; } C = null; }
 
-  return { iniciar, velocidade, pular, parar };
+  return { iniciar, velocidade, pular, parar, cenaUrl };
 })();

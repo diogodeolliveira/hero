@@ -153,3 +153,41 @@ function invocar(inv, r = Math.random) {
 // ===== Prêmios =====
 function premioFase(fase) { return Math.round((150 + fase * 40) * (ehChefe(fase) ? 2 : 1)); }
 function premioDesafio(faseEq, dif, venceu) { return Math.round((120 + faseEq * 25) * dif.mult * (venceu ? 1 : 0.2)); }
+
+// ===== Progressão da guilda (XP e nível) =====
+function xpParaProximo(nivel) { return 100 + (nivel - 1) * 50; }
+function premioNivel(nivel) { return 150 + nivel * 50; }
+function xpBatalha(tipo, faseEq, venceu) {
+  if (tipo === 'campanha') return venceu ? 30 + faseEq * 4 : 10;
+  return venceu ? 20 + faseEq * 3 : 8;
+}
+
+// ===== Missões diárias =====
+// Cada missão mede algo que realmente acontece no jogo.
+const MISSOES = [
+  { tipo: 'vencer', texto: n => `Vença ${n} batalhas`, meta: 3, premio: 300 },
+  { tipo: 'campanha', texto: n => n > 1 ? `Avance ${n} fases da campanha` : 'Avance 1 fase da campanha', meta: 1, premio: 250 },
+  { tipo: 'desafios', texto: n => `Jogue ${n} desafios do dia`, meta: 2, premio: 250 },
+  { tipo: 'monstros', texto: n => `Derrote ${n} monstros`, meta: 12, premio: 250 },
+  { tipo: 'habilidades', texto: n => `Use ${n} habilidades especiais em batalha`, meta: 10, premio: 200 },
+  { tipo: 'invocar', texto: n => n > 1 ? `Invoque ${n} heróis` : 'Invoque 1 herói', meta: 1, premio: 150 },
+];
+const XP_MISSAO = 25;
+function missoesDoDia(data) {
+  const r = criarRng(hashTexto('missoes-' + data));
+  const fixas = [MISSOES[0]];
+  const resto = MISSOES.slice(1).sort(() => r() - 0.5).slice(0, 2);
+  return fixas.concat(resto).map(m => ({ tipo: m.tipo, meta: m.meta, premio: m.premio, prog: 0, coletada: false }));
+}
+function textoMissao(m) { return MISSOES.find(x => x.tipo === m.tipo).texto(m.meta); }
+
+// O que uma batalha conta para as missões (só o lado do jogador)
+function resumoBatalha(sim) {
+  const meus = new Set(sim.inicio.filter(u => u.lado === 0).map(u => u.uid));
+  let habilidades = 0, monstros = 0;
+  for (const ev of sim.eventos) {
+    if (meus.has(ev.ator) && ev.hab) habilidades++;
+    for (const a of ev.alvos) if (a.morreu && !meus.has(a.uid)) monstros++;
+  }
+  return { habilidades, monstros };
+}
