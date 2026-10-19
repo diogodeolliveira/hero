@@ -57,4 +57,5 @@ Legenda de prioridade: 🔴 alta · 🟡 média · 🟢 baixa
 - [x] 2026-10-18 · Bonecos: personagem desenhado para cada classe, com aparência única por herói; monstros também desenhados.
 - [x] 2026-10-18 · Código do save na nuvem (Supabase): conta anônima automática, vincular e-mail e entrar em outro aparelho.
 - [x] 2026-10-18 · Repositório no GitHub: github.com/diogodeolliveira/Hero.
+- [x] 2026-10-18 · Personagens refeitos em pixel art desenhado à mão (moldes por classe, sombra e brilho, contorno); monstros com armaduras próprias.
 - [x] 2026-10-18 · Campo de batalha em pixel art com câmera de cima: personagens andam, atacam, disparam flechas e magias, caem; cenário muda por região; placar e narração.

@@ -39,14 +39,16 @@ function aparenciaHeroi(h) {
     trim: h.rar === 'lendario' ? '#f2c14e' : h.rar === 'epico' ? '#d7b46a' : null,
     capa: nobre,
     olho: null,
+    rar: h.rar,
+    rosto: r() < 0.4, // guerreiro com elmo aberto (mostra o rosto)
   };
 }
 
 const APARENCIA_MONSTRO = {
-  'Orc Brutamontes': { pele: '#6aa84f', presas: true, cor: '#5a4636' },
-  'Esqueleto Guerreiro': { pele: '#e8e2d0', cor: '#4a4a52' },
-  'Troll da Ponte': { pele: '#7d8f6a', presas: true, cor: '#4f4030' },
-  'Golem de Pedra': { pele: '#9a968e', cor: '#5f5b55' },
+  'Orc Brutamontes': { pele: '#6aa84f', presas: true, cor: '#5a4636', metal: '#9a6b45' },
+  'Esqueleto Guerreiro': { pele: '#e8e2d0', cor: '#4a4a52', metal: '#5a5f6e' },
+  'Troll da Ponte': { pele: '#7d8f6a', presas: true, cor: '#4f4030', metal: '#6f7d5c' },
+  'Golem de Pedra': { pele: '#9a968e', cor: '#5f5b55', metal: '#8f8a80' },
   'Xamã Goblin': { pele: '#93b545', cor: '#5b3f6e' },
   'Bruxa do Pântano': { pele: '#a3c49a', cor: '#3c4f3a' },
   'Lich Menor': { pele: '#d8d4e6', cor: '#2f2a4a' },
@@ -62,7 +64,7 @@ const APARENCIA_MONSTRO = {
 function aparenciaMonstro(nome, classe) {
   const m = APARENCIA_MONSTRO[nome] || { pele: '#7d8f6a', cor: '#4a3f3a' };
   return { classe, pele: m.pele || '#7d8f6a', cabelo: '#2a2a2a', estilo: 2, barba: false, chifres: classe === 'guerreiro',
-    cor: m.cor, trim: null, capa: false, olho: '#ff4a3d', presas: !!m.presas, monstro: true };
+    cor: m.cor, trim: null, capa: false, olho: '#ff4a3d', presas: !!m.presas, monstro: true, metal: m.metal || null };
 }
 
 // ----- partes comuns -----
@@ -223,6 +225,7 @@ function bonecoSvg(ap, passo, w, h) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="${w}" height="${h}">${DESENHO[ap.classe]({ ...ap, passo })}</svg>`;
 }
 
+// Personagem em pixel art (js/sprites.js) como imagem para as telas
 function boneco(ap, cls = '') {
-  return `<svg class="boneco ${cls}" viewBox="0 0 100 120" aria-hidden="true">${SOMBRA}${DESENHO[ap.classe](ap)}</svg>`;
+  return `<img class="boneco sprite sp-${ap.classe} ${cls}" src="${Sprites.url(ap)}" alt="" draggable="false">`;
 }

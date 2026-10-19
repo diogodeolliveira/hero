@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Galeria de sprites</title>
+  <style>
+    body { margin: 0; padding: 16px; background: #2b3a2b; color: #eee; font: 13px system-ui, sans-serif; }
+    h2 { margin: 18px 0 8px; font-size: 14px; }
+    .linha { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+    figure { margin: 0; text-align: center; }
+    canvas { image-rendering: pixelated; display: block; margin: 0 auto 4px; }
+    figcaption { font-size: 11px; opacity: .8; max-width: 90px; }
+  </style>
+</head>
+<body>
+  <!-- Ferramenta de desenvolvimento: mostra todos os sprites ampliados (não faz parte do jogo) -->
+  <div id="g"></div>
+  <script src="../js/dados.js"></script>
+  <script src="../js/bonecos.js"></script>
+  <script src="../js/sprites.js"></script>
+  <script src="../js/motor.js"></script>
+  <script>
+    const ESCALA = Number(new URLSearchParams(location.search).get('x') || 3);
+    const g = document.getElementById('g');
+    function figura(ap, legenda, quadro = 'parado') {
+      const c = Sprites.quadros(ap)[quadro];
+      const z = document.createElement('canvas');
+      z.width = c.width * ESCALA; z.height = c.height * ESCALA;
+      const x = z.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(c, 0, 0, z.width, z.height);
+      const f = document.createElement('figure'); f.append(z);
+      const cap = document.createElement('figcaption'); cap.textContent = legenda; f.append(cap);
+      return f;
+    }
+    for (const classe of ORDEM_CLASSES) {
+      const h2 = document.createElement('h2'); h2.textContent = CLASSES[classe].nome; g.append(h2);
+      const linha = document.createElement('div'); linha.className = 'linha'; g.append(linha);
+      HEROIS.filter(h => h.classe === classe).forEach(h => linha.append(figura(aparenciaHeroi(h), h.nome + ' · ' + h.rar)));
+      const h0 = HEROIS.find(h => h.classe === classe);
+      linha.append(figura(aparenciaHeroi(h0), 'passo A', 'a'), figura(aparenciaHeroi(h0), 'passo B', 'b'));
+    }
+    const h2 = document.createElement('h2'); h2.textContent = 'Monstros'; g.append(h2);
+    const linha = document.createElement('div'); linha.className = 'linha'; g.append(linha);
+    for (const classe of ORDEM_CLASSES) MONSTROS[classe].forEach(n => linha.append(figura(aparenciaMonstro(n, classe), n)));
+  </script>
+</body>
+</html>

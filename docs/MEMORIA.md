@@ -57,7 +57,12 @@ Decisões tomadas, regras do jogo e o porquê de cada escolha. Atualize sempre q
 
 ## Bonecos (personagens)
 
-- Desenhados em SVG no `js/bonecos.js`, todos originais, estilo "chibi" (cabeça grande).
+- **Pixel art desenhado à mão** em `js/sprites.js`: cada classe tem um molde (grade de letras), e cada letra é um material com 3 tons (metal, tecido, couro, pele). A paleta de cada herói recolore o molde, e o contorno escuro é automático.
+- Peças por cima do molde: elmo fechado ou aberto, chifres, presas, escudo, espada, barba, cajados, arco, aljava, asas, cauda, coroa.
+- Caminhada: o mesmo molde com o pé esquerdo ou o direito levantado.
+- `tools/galeria.html` mostra todos os sprites ampliados, para revisar a arte.
+- Referências de estilo do usuário ficam em `personagens/` (fora do git, porque são imagens de terceiros). Servem só de inspiração; nada foi copiado.
+- (Antes eram desenhos SVG; `js/bonecos.js` ainda guarda a aparência de cada herói e monstro.)
 - A aparência de cada herói (pele, cabelo, barba, cor da roupa, elmo com chifre) sai de uma semente baseada no **id**: é sempre a mesma.
 - Épico e lendário ganham capa e detalhes dourados; dragões lendários podem ser dourados.
 - Monstros usam o mesmo corpo da classe, com pele própria (orc verde, esqueleto osso etc.) e olhos vermelhos (`APARENCIA_MONSTRO`).

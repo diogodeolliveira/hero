@@ -67,12 +67,25 @@ const Campo = (function () {
     } catch (e) { cinza = c; }
     return { normal: c, flash: silhueta(c, '#ffffff'), cinza };
   }
+  // Sprites de pixel art (js/sprites.js) + versões de flash (dano) e cinza (caído)
+  function variantes(c) {
+    let cinza = c;
+    try {
+      cinza = novoCanvas(c.width, c.height);
+      const cx = cinza.getContext('2d');
+      cx.drawImage(c, 0, 0);
+      const d = cx.getImageData(0, 0, c.width, c.height);
+      for (let i = 0; i < d.data.length; i += 4) {
+        const l = (d.data[i] * 0.3 + d.data[i + 1] * 0.59 + d.data[i + 2] * 0.11) * 0.75;
+        d.data[i] = d.data[i + 1] = d.data[i + 2] = l;
+      }
+      cx.putImageData(d, 0, 0);
+    } catch (e) { cinza = c; }
+    return { normal: c, flash: silhueta(c, '#ffffff'), cinza };
+  }
   async function spritesDe(u) {
-    const esc = u.chefe ? 1.35 : 1;
-    const w = Math.round(SW * esc), h = Math.round(SH * esc);
-    const quadros = await Promise.all([0, 1, -1].map(p => carregarImagem(bonecoSvg(u.ap, p, w * 2, h * 2))
-      .then(img => prepararQuadro(img, w, h))));
-    return { parado: quadros[0], a: quadros[1], b: quadros[2], w: w + 2, h: h + 2 };
+    const q = Sprites.quadros(u.ap);
+    return { parado: variantes(q.parado), a: variantes(q.a), b: variantes(q.b), w: q.parado.width, h: q.parado.height };
   }
 
   // ---------- terreno ----------
@@ -136,7 +149,7 @@ const Campo = (function () {
     const cv = document.getElementById('campo'), hud = document.getElementById('campo-hud');
     const cw = wrap.clientWidth, ch = wrap.clientHeight;
     const horizontal = cw > ch * 1.05;
-    const s = Math.max(2, Math.floor(cw / (horizontal ? 330 : 190)));
+    const s = Math.max(2, Math.round(cw / (horizontal ? 300 : 130)));
     const W = Math.floor(cw / s), H = Math.floor(ch / s);
     const dpr = window.devicePixelRatio || 1;
     cv.width = W; cv.height = H;

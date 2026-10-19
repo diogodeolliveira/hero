@@ -266,6 +266,21 @@ p { margin: .4rem 0; }
 .esc-glifo .boneco { width: 40px; margin-bottom: -6px; }
 .inimigo .un-corpo .boneco { transform: scaleX(-1); }
 
+/* Sprites em pixel art */
+img.sprite { image-rendering: pixelated; image-rendering: crisp-edges; aspect-ratio: auto; height: auto; -webkit-user-drag: none; user-select: none; }
+.carta img.sprite { width: 62%; margin: 6px auto 2px; filter: drop-shadow(0 4px 8px color-mix(in srgb, var(--cl) 50%, transparent)); }
+.carta img.sprite.sp-dragao { width: 86%; margin-top: 12px; margin-bottom: 6px; }
+.carta.vazia img.sprite.silhueta { filter: brightness(0); opacity: .35; width: 52%; }
+.carta.vazia img.sprite.sp-dragao.silhueta { width: 74%; }
+.vaga img.sprite { width: 34px; }
+.vaga img.sprite.sp-dragao { width: 46px; margin: 4px 0; }
+.ini img.sprite { width: 70%; margin-bottom: 2px; }
+.ini img.sprite.sp-dragao { width: 92%; margin-bottom: 6px; }
+.criar-glifos img.sprite, .banner-glifos img.sprite { width: 66%; margin-bottom: 2px; }
+.criar-glifos img.sprite.sp-dragao, .banner-glifos img.sprite.sp-dragao { width: 90%; margin-bottom: 6px; }
+.esc-glifo img.sprite { width: 28px; margin-bottom: 1px; }
+.esc-glifo img.sprite.sp-dragao { width: 38px; margin-bottom: 5px; }
+
 /* ===== Camadas (batalha, revelação, folha) ===== */
 .camada { position: fixed; inset: 0; z-index: 20; background: rgba(8, 6, 16, .88); backdrop-filter: blur(6px); overflow-y: auto; }
 .camada[hidden] { display: none; }
@@ -382,6 +397,8 @@ p { margin: .4rem 0; }
 .selo.max { background: var(--ouro); color: #2a1c00; }
 .virar .carta .estrelas, .virar .carta .carta-titulo { display: none; }
 .virar .carta .boneco { width: 70%; }
+.virar .carta img.sprite { width: 48%; margin-top: 4px; }
+.virar .carta img.sprite.sp-dragao { width: 74%; margin: 10px auto 6px; }
 .virar .selo { bottom: 5px; }
 .virar .carta { padding-bottom: 22px; }
 
