@@ -1,92 +1,35 @@
 'use strict';
 
 // ===== Campo de batalha em pixel art (câmera de cima, levemente inclinada) =====
-// A batalha já vem calculada (simularBatalha). Aqui os personagens andam, atacam
-// e reagem seguindo os eventos, um por um.
+// A batalha já vem calculada (simularBatalha). Aqui os personagens se movem e
+// reagem seguindo os eventos NA ORDEM REAL, sem alterar nada do resultado.
+// Cada personagem é um esqueleto de partes animado por js/animacao.js.
 const Campo = (function () {
   let C = null;
 
-  const SW = 28, SH = 34;           // tamanho do boneco no mundo (pixels "grandes")
-  const VEL_ANDAR = 0.085;          // pixels do mundo por ms
-  const FORMACAO = [                // u: 0 = lado aliado, 1 = lado inimigo · v: posição lateral
+  const VEL_ANDAR = 0.085;     // pixels do mundo por ms (marcha de entrada)
+  const VEL_AVANCO = 0.2;      // investida até o alvo
+  const VEL_RECUO = 0.11;      // volta para a formação, de frente para o inimigo
+  const FORMACAO = [           // u: 0 = lado aliado, 1 = lado inimigo · v: posição lateral
     { u: 0.31, v: 0.33 }, { u: 0.31, v: 0.67 },
     { u: 0.11, v: 0.16 }, { u: 0.11, v: 0.5 }, { u: 0.11, v: 0.84 },
   ];
-
-  const TERRENOS = {
-    'Floresta Sussurrante': { faixas: ['#3f8f3a', '#46993f'], ruido: ['#357a31', '#56a84b', '#4a9c42'], deco: 'floresta' },
-    'Pântano Cinzento': { faixas: ['#4f6b45', '#56744b'], ruido: ['#425a3a', '#62805a', '#4b6642'], deco: 'pantano' },
-    'Minas Esquecidas': { faixas: ['#7a5f45', '#82664a'], ruido: ['#6a523c', '#8f7458', '#755a41'], deco: 'minas' },
-    'Picos Gelados': { faixas: ['#dfe9f2', '#e7eff6'], ruido: ['#c9d8e6', '#f6fbff', '#d3e1ec'], deco: 'gelo' },
-    'Ruínas de Obsidiana': { faixas: ['#4a4258', '#51495f'], ruido: ['#3e374b', '#5e5570', '#463f53'], deco: 'ruinas' },
-    'Vulcão Adormecido': { faixas: ['#4a2f2a', '#523430'], ruido: ['#3c2622', '#5e3d36', '#45302b'], deco: 'vulcao' },
+  const FOGO = ['#ff7a1a', '#ffd34d', '#ff3b1f'];
+  const COR_CARGA = {
+    raio: ['#c9b5ff', '#8b6cff', '#ffffff'], fogo: ['#ffb347', '#ffd34d', '#ff7a1a'],
+    luz: ['#7dffb0', '#ffe08a', '#ffffff'], sagrado: ['#fff1b0', '#ffe08a'], flechaForte: ['#c6f0ff', '#ffffff'],
   };
 
-  // ---------- sprites ----------
-  function carregarImagem(svg) {
-    return new Promise((ok, falha) => {
-      const img = new Image();
-      img.onload = () => ok(img);
-      img.onerror = falha;
-      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-    });
-  }
+  const TERRENOS = {
+    'Floresta Sussurrante': { faixas: ['#3f8f3a', '#46993f'], ruido: ['#357a31', '#56a84b', '#4a9c42'], deco: 'floresta', poeira: '#b9d39a' },
+    'Pântano Cinzento': { faixas: ['#4f6b45', '#56744b'], ruido: ['#425a3a', '#62805a', '#4b6642'], deco: 'pantano', poeira: '#9fb08f' },
+    'Minas Esquecidas': { faixas: ['#7a5f45', '#82664a'], ruido: ['#6a523c', '#8f7458', '#755a41'], deco: 'minas', poeira: '#c9b08e' },
+    'Picos Gelados': { faixas: ['#dfe9f2', '#e7eff6'], ruido: ['#c9d8e6', '#f6fbff', '#d3e1ec'], deco: 'gelo', poeira: '#ffffff' },
+    'Ruínas de Obsidiana': { faixas: ['#4a4258', '#51495f'], ruido: ['#3e374b', '#5e5570', '#463f53'], deco: 'ruinas', poeira: '#8d84a3' },
+    'Vulcão Adormecido': { faixas: ['#4a2f2a', '#523430'], ruido: ['#3c2622', '#5e3d36', '#45302b'], deco: 'vulcao', poeira: '#8a6a5e' },
+  };
+
   function novoCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
-  function silhueta(src, cor) {
-    const c = novoCanvas(src.width, src.height), x = c.getContext('2d');
-    x.drawImage(src, 0, 0);
-    x.globalCompositeOperation = 'source-in';
-    x.fillStyle = cor;
-    x.fillRect(0, 0, c.width, c.height);
-    return c;
-  }
-  // Rasteriza o SVG em baixa resolução, corta o semitransparente (borda de pixel) e põe contorno
-  function prepararQuadro(img, w, h) {
-    const base = novoCanvas(w, h), bx = base.getContext('2d');
-    bx.drawImage(img, 0, 0, w, h);
-    try {
-      const d = bx.getImageData(0, 0, w, h);
-      for (let i = 3; i < d.data.length; i += 4) d.data[i] = d.data[i] > 110 ? 255 : 0;
-      bx.putImageData(d, 0, 0);
-    } catch (e) { /* navegador bloqueou leitura de pixels: fica suavizado */ }
-    const c = novoCanvas(w + 2, h + 2), x = c.getContext('2d');
-    const contorno = silhueta(base, '#140f1f');
-    for (const [dx, dy] of [[0, 1], [2, 1], [1, 0], [1, 2]]) x.drawImage(contorno, dx, dy);
-    x.drawImage(base, 1, 1);
-    let cinza = c;
-    try {
-      cinza = novoCanvas(c.width, c.height);
-      const cx = cinza.getContext('2d');
-      cx.drawImage(c, 0, 0);
-      const d = cx.getImageData(0, 0, c.width, c.height);
-      for (let i = 0; i < d.data.length; i += 4) {
-        const l = (d.data[i] * 0.3 + d.data[i + 1] * 0.59 + d.data[i + 2] * 0.11) * 0.75;
-        d.data[i] = d.data[i + 1] = d.data[i + 2] = l;
-      }
-      cx.putImageData(d, 0, 0);
-    } catch (e) { cinza = c; }
-    return { normal: c, flash: silhueta(c, '#ffffff'), cinza };
-  }
-  // Sprites de pixel art (js/sprites.js) + versões de flash (dano) e cinza (caído)
-  function variantes(c) {
-    let cinza = c;
-    try {
-      cinza = novoCanvas(c.width, c.height);
-      const cx = cinza.getContext('2d');
-      cx.drawImage(c, 0, 0);
-      const d = cx.getImageData(0, 0, c.width, c.height);
-      for (let i = 0; i < d.data.length; i += 4) {
-        const l = (d.data[i] * 0.3 + d.data[i + 1] * 0.59 + d.data[i + 2] * 0.11) * 0.75;
-        d.data[i] = d.data[i + 1] = d.data[i + 2] = l;
-      }
-      cx.putImageData(d, 0, 0);
-    } catch (e) { cinza = c; }
-    return { normal: c, flash: silhueta(c, '#ffffff'), cinza };
-  }
-  async function spritesDe(u) {
-    const q = Sprites.quadros(u.ap);
-    return { parado: variantes(q.parado), a: variantes(q.a), b: variantes(q.b), w: q.parado.width, h: q.parado.height };
-  }
 
   // ---------- terreno ----------
   function desenharTerreno(W, H, regiao, r, horizontal) {
@@ -139,11 +82,11 @@ const Campo = (function () {
     return c;
   }
 
-  // ---------- relógio do jogo (respeita a velocidade) ----------
+  // ---------- relógio do jogo (respeita a velocidade e as pausas de impacto) ----------
   function esperar(ms) { return new Promise(ok => C.esperas.push({ ate: C.relogio + ms, ok })); }
 
   // ---------- início ----------
-  async function iniciar({ sim, regiao, aoFim }) {
+  function iniciar({ sim, regiao, aoFim }) {
     parar();
     const wrap = document.getElementById('bcampo');
     const cv = document.getElementById('campo'), hud = document.getElementById('campo-hud');
@@ -158,22 +101,29 @@ const Campo = (function () {
     hud.width = Math.round(W * s * dpr); hud.height = Math.round(H * s * dpr);
 
     const r = criarRng(hashTexto(regiao + sim.eventos.length));
-    C = { sim, aoFim, W, H, s, dpr, horizontal, ctx: cv.getContext('2d'), hx: hud.getContext('2d'),
-      relogio: 0, vel: 1, esperas: [], particulas: [], efeitos: [], textos: [], U: {}, ativo: true, parar: false, idx: 0, ultimo: performance.now() };
+    C = { sim, aoFim, W, H, s, dpr, horizontal, regiao, ctx: cv.getContext('2d'), hx: hud.getContext('2d'),
+      relogio: 0, vel: 1, esperas: [], particulas: [], efeitos: [], textos: [], U: {}, ativo: true, parar: false,
+      idx: 0, turno: 0, ultimo: performance.now(), pausaAte: 0, tremor: null, calmo: movimentoReduzido(),
+      poeira: (TERRENOS[regiao] || TERRENOS['Floresta Sussurrante']).poeira };
     C.ctx.imageSmoothingEnabled = false;
     C.terreno = desenharTerreno(W, H, regiao, r, horizontal);
 
     const pos = (u, v) => horizontal
       ? { x: W * (0.08 + 0.84 * u), y: H * (0.2 + 0.7 * v) }
       : { x: W * (0.13 + 0.74 * v), y: H * (0.95 - 0.8 * u) };
-    const sprites = await Promise.all(sim.inicio.map(spritesDe));
-    if (!C || C.sim !== sim) return; // fechou antes de carregar
-    sim.inicio.forEach((u, i) => {
+    sim.inicio.forEach(u => {
       const f = FORMACAO[u.vaga];
-      const p = pos(u.lado ? 1 - f.u : f.u, u.lado && horizontal ? f.v : (u.lado ? 1 - f.v : f.v));
-      p.x += (r() - 0.5) * 6; p.y += (r() - 0.5) * 4;
-      C.U[u.uid] = { ...u, x: p.x, y: p.y, hpVis: u.hp, hpReal: u.hp, escudo: 0, dir: horizontal ? (u.lado ? -1 : 1) : 1,
-        destino: null, flash: 0, investida: null, rotulo: 0, morto: false, morteT: 0, turnos: 0, spr: sprites[i] };
+      const casa = pos(u.lado ? 1 - f.u : f.u, u.lado && horizontal ? f.v : (u.lado ? 1 - f.v : f.v));
+      casa.x += (r() - 0.5) * 6; casa.y += (r() - 0.5) * 4;
+      const rig = Sprites.rig(u.ap);
+      const dir = horizontal ? (u.lado ? -1 : 1) : 1;
+      // Entrada: cada um começa alguns passos atrás e marcha até a formação
+      const recuo = C.calmo ? 0 : 30;
+      const ini = horizontal ? { x: casa.x - dir * recuo, y: casa.y } : { x: casa.x, y: casa.y + (u.lado ? -recuo : recuo) };
+      C.U[u.uid] = { ...u, x: ini.x, y: ini.y, casa, dir, rig, spr: { w: rig.w, h: rig.h },
+        hpVis: u.hp, hpReal: u.hp, escudo: 0, turnos: 0, sem: r(),
+        destino: recuo ? { x: casa.x, y: casa.y, vel: VEL_ANDAR * (0.85 + r() * 0.3), ok: () => {} } : null,
+        acao: null, reacao: null, flash: 0, rotulo: 0, morto: false, morteT: 0, vitoria: false, derrota: false, proxPoeira: 0 };
     });
     atualizarPlacar();
     atualizarElenco();
@@ -186,135 +136,230 @@ const Campo = (function () {
   // ---------- roteiro: reproduz os eventos ----------
   async function rodar() {
     const meu = C;
-    await esperar(700);
+    await esperar(750);
     for (const ev of meu.sim.eventos) {
       if (C !== meu || meu.parar) return;
-      await animarEvento(ev);
+      await animarEvento(ev, meu);
     }
     if (C !== meu || meu.parar) return;
-    await esperar(700);
+    comemorar(meu);
+    await esperar(1200);
     if (C === meu && !meu.parar) meu.aoFim();
   }
+  function comemorar(c) {
+    for (const u of Object.values(c.U)) {
+      if (u.morto) continue;
+      u.acao = null;
+      if (u.lado === c.sim.vencedor) u.vitoria = true; else u.derrota = true;
+    }
+  }
 
-  function andarAte(a, t) {
-    const dx = a.x - t.x, dy = a.y - t.y, d = Math.hypot(dx, dy) || 1;
-    if (d < 16) return Promise.resolve();
-    const alcance = 11 + (t.chefe ? 4 : 0);
-    const lateral = (Math.random() - 0.5) * 6;
-    return new Promise(ok => {
-      a.destino = { x: t.x + dx / d * alcance - dy / d * lateral, y: t.y + dy / d * alcance * 0.7 + dx / d * lateral, ok };
-    });
+  // ---------- movimento ----------
+  function flipDe(u) { return u.dir * (u.classe === 'arqueiro' ? -1 : 1); }   // o arco fica na outra mão
+  function virarPara(a, alvo) { const dx = alvo.x - a.x; if (Math.abs(dx) > 1) a.dir = dx > 0 ? 1 : -1; }
+  function irPara(a, x, y, vel, recuo) { return new Promise(ok => { a.destino = { x, y, vel, recuo, ok }; }); }
+  // Para AO LADO do alvo (nunca em cima dele), de frente para ele
+  function avancar(a, t) {
+    const lado = Math.sign(a.x - t.x) || (a.uid % 2 ? 1 : -1);
+    const dist = 15 + (t.classe === 'dragao' ? 5 : 0) + (a.classe === 'dragao' ? 4 : 0);
+    const x = t.x + lado * dist;
+    const y = t.y + (C.horizontal ? (Math.random() - 0.5) * 4 : (a.lado ? -3 : 3));
+    if (Math.hypot(a.x - x, a.y - y) < 3) { virarPara(a, t); return Promise.resolve(); }
+    return irPara(a, x, y, VEL_AVANCO, false).then(() => virarPara(a, t));
   }
-  async function golpe(a, t, forte) {
-    const dx = t.x - a.x, dy = t.y - a.y, d = Math.hypot(dx, dy) || 1;
-    a.investida = { dx: dx / d * 5, dy: dy / d * 5, ate: C.relogio + 180 };
-    if (Math.abs(dx) > 1) a.dir = dx > 0 ? 1 : -1;
-    await esperar(90);
-    C.efeitos.push({ tipo: 'corte', x: t.x, y: t.y - t.spr.h * 0.5, ini: C.relogio, dur: 220, forte });
-    await esperar(90);
+  function voltar(a) {
+    if (a.morto) return;
+    if (Math.hypot(a.x - a.casa.x, a.y - a.casa.y) < 2) return;
+    irPara(a, a.casa.x, a.casa.y, VEL_RECUO, true);      // recua de frente para o inimigo
   }
-  function projetil(a, t, tipo) {
-    const x0 = a.x + a.dir * 6, y0 = a.y - a.spr.h * 0.55, x1 = t.x, y1 = t.y - t.spr.h * 0.5;
-    const vel = { flecha: 0.24, flechaForte: 0.3, raio: 0.17, luz: 0.13, sagrado: 0.15, fogo: 0.15 }[tipo];
-    if (Math.abs(x1 - x0) > 1) a.dir = x1 > x0 ? 1 : -1;
-    a.investida = { dx: 0, dy: -2, ate: C.relogio + 160 };
-    return new Promise(ok => C.efeitos.push({ tipo: 'proj', subtipo: tipo, x0, y0, x1, y1, ini: C.relogio, dur: Math.hypot(x1 - x0, y1 - y0) / vel, ok }));
+  function centro(alvos) {
+    return alvos.reduce((m, x) => ({ x: m.x + x.u.x / alvos.length, y: m.y + x.u.y / alvos.length }), { x: 0, y: 0 });
   }
-  function explosao(x, y, cores, n = 14, forca = 0.05) {
+
+  // ---------- animações e efeitos ----------
+  // Dispara uma animação de ação e devolve em quantos ms acontece o impacto
+  function fazer(a, nome) {
+    a.acao = { nome, t0: C.relogio, dur: Anim.DUR[nome] };
+    return Anim.DUR[nome] * (Anim.IMPACTO[nome] || 0.5);
+  }
+  function reagir(u, nome, atacante) {
+    let lado = -1;                                        // para trás, no espaço do próprio boneco
+    if (atacante && atacante !== u) lado = (Math.sign(u.x - atacante.x) || 1) * flipDe(u);
+    u.reacao = { nome, t0: C.relogio, dur: Anim.DUR[nome], lado };
+  }
+  function pausar(ms) { if (!C.calmo) C.pausaAte = performance.now() + ms; }          // "hitstop" no impacto
+  function tremer(forca, ms) { if (!C.calmo) C.tremor = { ate: C.relogio + ms, forca }; }
+  function pontaDaArma(a) {
+    if (a.classe === 'arqueiro') return { x: a.x + a.dir * 8, y: a.y - a.spr.h * 0.5 };
+    return { x: a.x + a.dir * 7, y: a.y - a.spr.h * 0.92 };
+  }
+  function corte(a, t, forte, cor) {
+    C.efeitos.push({ tipo: 'corte', x: t.x, y: t.y - t.spr.h * 0.5, ini: C.relogio, dur: 220, forte, cor, dir: a.dir });
+    pausar(forte ? 70 : 40);
+    if (forte) tremer(2, 180);
+  }
+  async function projetil(a, t, tipo) {
+    const nome = { flecha: 'disparo', flechaForte: 'disparoForte', raio: 'conjurar', luz: 'conjurar', sagrado: 'conjurar' }[tipo];
+    virarPara(a, t);
+    const ate = fazer(a, nome);
+    if (COR_CARGA[tipo]) C.efeitos.push({ tipo: 'carga', u: a, ini: C.relogio, dur: ate, cores: COR_CARGA[tipo] });
+    if (a.classe === 'arqueiro') C.efeitos.push({ tipo: 'flechaArmada', u: a, ini: C.relogio, dur: ate });
+    await esperar(ate);
+    if (C.parar) return;
+    const p = pontaDaArma(a);
+    const x1 = t.x, y1 = t.y - t.spr.h * 0.5;
+    const vel = { flecha: 0.24, flechaForte: 0.3, raio: 0.17, luz: 0.13, sagrado: 0.15 }[tipo];
+    return new Promise(ok => C.efeitos.push({ tipo: 'proj', subtipo: tipo, x0: p.x, y0: p.y, x1, y1, ini: C.relogio, dur: Math.hypot(x1 - p.x, y1 - p.y) / vel, ok }));
+  }
+  function explosao(x, y, cores, n = 12, forca = 0.05) {
     for (let i = 0; i < n; i++) {
       const ang = Math.random() * Math.PI * 2, v = Math.random() * forca;
       C.particulas.push({ x, y, vx: Math.cos(ang) * v, vy: Math.sin(ang) * v - 0.02, vida: 300 + Math.random() * 300, cor: escolher(Math.random, cores), t: 0 });
     }
   }
-  function subir(x, y, cores, n = 10) {
+  function subir(x, y, cores, n = 8) {
     for (let i = 0; i < n; i++) C.particulas.push({ x: x + (Math.random() - 0.5) * 12, y: y - Math.random() * 6, vx: 0, vy: -0.025 - Math.random() * 0.02, vida: 500 + Math.random() * 300, cor: escolher(Math.random, cores), t: 0 });
   }
+  function poeira(x, y, n = 2) {
+    if (C.calmo) return;
+    for (let i = 0; i < n; i++) C.particulas.push({ x: x + (Math.random() - 0.5) * 6, y: y - Math.random() * 2, vx: (Math.random() - 0.5) * 0.02, vy: -0.008 - Math.random() * 0.01, vida: 260 + Math.random() * 200, cor: C.poeira, t: 0, chao: true });
+  }
 
-  async function animarEvento(ev) {
+  async function animarEvento(ev, meu) {
     const a = C.U[ev.ator];
     const alvos = ev.alvos.map(x => ({ ...x, u: C.U[x.uid] }));
     const alvo = alvos[0] && alvos[0].u;
     const cura = alvos.some(x => x.cura);
-    C.turno = (C.turno || 0) + 1;
+    const parou = () => C !== meu || meu.parar;
+    C.turno++;
     a.turnos++;
     marcarAtor(a);
     narrar(ev, a, alvo, cura);
-    if (ev.hab) a.rotulo = C.relogio + 1300;
+    if (ev.hab) a.rotulo = C.relogio + 1400;
 
     switch (a.classe) {
-      case 'guerreiro':
-        await andarAte(a, alvo); if (C.parar) return;
-        if (ev.hab) C.efeitos.push({ tipo: 'onda', x: a.x, y: a.y - 4, ini: C.relogio, dur: 420, cor: '#ffe08a' });
-        await golpe(a, alvo, !!ev.hab);
+      case 'guerreiro': {
+        await avancar(a, alvo); if (parou()) return;
+        virarPara(a, alvo);
+        const nome = ev.hab ? 'grito' : 'golpe';
+        const ate = fazer(a, nome);
+        if (ev.hab) C.efeitos.push({ tipo: 'onda', x: a.x, y: a.y - 4, ini: C.relogio, dur: 520, cor: '#ffe08a' });
+        await esperar(ate); if (parou()) return;
+        corte(a, alvo, !!ev.hab);
+        aplicar(ev, alvos, a);
+        await esperar(Anim.DUR[nome] - ate); if (parou()) return;
+        voltar(a);
         break;
+      }
       case 'dragao':
         if (ev.hab) {
-          a.investida = { dx: 0, dy: -3, ate: C.relogio + 500 };
-          const meio = alvos.reduce((m, x) => ({ x: m.x + x.u.x / alvos.length, y: m.y + x.u.y / alvos.length }), { x: 0, y: 0 });
-          if (Math.abs(meio.x - a.x) > 1) a.dir = meio.x > a.x ? 1 : -1;
-          C.efeitos.push({ tipo: 'sopro', a, alvo: meio, ini: C.relogio, dur: 600 });
-          await esperar(600);
-          alvos.forEach(x => explosao(x.u.x, x.u.y - 10, ['#ff7a1a', '#ffd34d', '#ff3b1f']));
+          const meio = centro(alvos);
+          virarPara(a, meio);
+          const ate = fazer(a, 'sopro');
+          await esperar(ate); if (parou()) return;
+          C.efeitos.push({ tipo: 'sopro', a, alvo: meio, ini: C.relogio, dur: 520 });
+          await esperar(520); if (parou()) return;
+          alvos.forEach(x => explosao(x.u.x, x.u.y - 10, FOGO));
+          tremer(1, 220);
+          aplicar(ev, alvos, a);
+          await esperar(Math.max(0, Anim.DUR.sopro - ate - 520));
         } else {
-          await andarAte(a, alvo); if (C.parar) return;
-          await golpe(a, alvo, false);
+          await avancar(a, alvo); if (parou()) return;
+          virarPara(a, alvo);
+          const ate = fazer(a, 'mordida');
+          await esperar(ate); if (parou()) return;
+          corte(a, alvo, false, '#ffd34d');
+          aplicar(ev, alvos, a);
+          await esperar(Anim.DUR.mordida - ate); if (parou()) return;
+          voltar(a);
         }
         break;
       case 'mago':
         if (ev.hab) {
-          a.investida = { dx: 0, dy: -3, ate: C.relogio + 400 };
+          const ate = fazer(a, 'conjurarForte');
+          C.efeitos.push({ tipo: 'carga', u: a, ini: C.relogio, dur: ate, cores: COR_CARGA.fogo, forte: true });
+          await esperar(ate); if (parou()) return;
           await Promise.all(alvos.map((x, i) => esperar(i * 90).then(() => new Promise(ok =>
             C.efeitos.push({ tipo: 'proj', subtipo: 'fogo', x0: x.u.x + 10, y0: x.u.y - 70, x1: x.u.x, y1: x.u.y - 8, ini: C.relogio, dur: 380, ok })))));
-          alvos.forEach(x => explosao(x.u.x, x.u.y - 8, ['#ff7a1a', '#ffd34d', '#ff3b1f']));
+          if (parou()) return;
+          alvos.forEach(x => explosao(x.u.x, x.u.y - 8, FOGO));
+          tremer(1, 200);
+          aplicar(ev, alvos, a);
+          await esperar(220);
         } else {
-          await projetil(a, alvo, 'raio');
+          await projetil(a, alvo, 'raio'); if (parou()) return;
           explosao(alvo.x, alvo.y - 14, ['#b89cff', '#ffffff', '#8b6cff'], 8);
+          aplicar(ev, alvos, a);
+          await esperar(160);
         }
         break;
       case 'arqueiro':
-        await projetil(a, alvo, ev.hab ? 'flechaForte' : 'flecha');
-        if (ev.hab) explosao(alvo.x, alvo.y - 14, ['#ffffff', '#c6f0ff', '#5fd38d'], 12);
+        await projetil(a, alvo, ev.hab ? 'flechaForte' : 'flecha'); if (parou()) return;
+        if (ev.hab) { explosao(alvo.x, alvo.y - 14, ['#ffffff', '#c6f0ff', '#5fd38d'], 10); pausar(60); }
+        aplicar(ev, alvos, a);
+        await esperar(160);
         break;
       case 'curandeiro':
         if (ev.hab) {
-          a.investida = { dx: 0, dy: -3, ate: C.relogio + 400 };
+          const ate = fazer(a, 'bencao');
+          C.efeitos.push({ tipo: 'carga', u: a, ini: C.relogio, dur: ate, cores: COR_CARGA.luz, forte: true });
+          await esperar(ate); if (parou()) return;
           alvos.forEach(x => C.efeitos.push({ tipo: 'coluna', x: x.u.x, y: x.u.y, ini: C.relogio, dur: 600 }));
-          await esperar(350);
+          await esperar(250); if (parou()) return;
           alvos.forEach(x => subir(x.u.x, x.u.y - 6, ['#7dffb0', '#ffe08a', '#ffffff']));
+          aplicar(ev, alvos, a);
+          await esperar(300);
         } else if (cura) {
-          await projetil(a, alvo, 'luz');
+          await projetil(a, alvo, 'luz'); if (parou()) return;
           subir(alvo.x, alvo.y - 6, ['#7dffb0', '#ffe08a', '#ffffff'], 8);
+          aplicar(ev, alvos, a);
+          await esperar(160);
         } else {
-          await projetil(a, alvo, 'sagrado');
+          await projetil(a, alvo, 'sagrado'); if (parou()) return;
           explosao(alvo.x, alvo.y - 14, ['#ffe08a', '#ffffff'], 8);
+          aplicar(ev, alvos, a);
+          await esperar(160);
         }
         break;
     }
-    if (C.parar) return;
-    aplicar(ev, alvos);
+    if (parou()) return;
     narrarMortes(alvos);
-    await esperar(ev.hab ? 420 : 260);
+    await esperar(ev.hab ? 220 : 120);
   }
 
-  function aplicar(ev, alvos) {
+  // Aplica o resultado REAL do evento (vida, escudo, mortes) e dispara as reações
+  function aplicar(ev, alvos, atacante) {
     if (ev._feito) return;
     ev._feito = true;
     C.idx++;
     for (const x of alvos) {
       const u = x.u;
+      const tinhaEscudo = u.escudo > 0;
       u.hpReal = x.hp; u.escudo = x.escudo;
-      if (x.cura) { texto(u, '+' + x.cura, 'cura'); continue; }
-      u.flash = C.relogio + 110;
+      if (x.cura) {
+        texto(u, '+' + x.cura, 'cura');
+        reagir(u, 'cura', atacante);
+        C.efeitos.push({ tipo: 'anel', u, ini: C.relogio, dur: 520, cor: '#7dffb0' });
+        continue;
+      }
+      u.flash = C.relogio + 90;
       texto(u, x.crit ? x.dano + '!' : String(x.dano), x.crit ? 'crit' : 'dano');
-      if (x.morreu) { u.morto = true; u.morteT = C.relogio; }
+      reagir(u, tinhaEscudo ? 'defesa' : 'dano', atacante);
+      if (tinhaEscudo) explosao(u.x + u.dir * 5, u.y - u.spr.h * 0.5, ['#ffffff', '#bfe6ff', '#8fd8ff'], 6, 0.04);
+      if (x.crit) { pausar(80); tremer(2, 200); }
+      if (x.morreu) { u.morto = true; u.morteT = C.relogio; u.acao = null; u.destino = null; }
     }
-    if (ev.escudoAtor) C.U[ev.ator].escudo = ev.escudoAtor;
+    if (ev.escudoAtor) {
+      const a = C.U[ev.ator];
+      a.escudo = ev.escudoAtor;
+      C.efeitos.push({ tipo: 'anel', u: a, ini: C.relogio, dur: 620, cor: '#bfe6ff' });
+    }
     atualizarPlacar();
     atualizarElenco();
   }
   function texto(u, txt, tipo) { C.textos.push({ x: u.x + (Math.random() - 0.5) * 6, y: u.y - u.spr.h, txt, tipo, ini: C.relogio }); }
 
-  // ---------- narração e placar ----------
+  // ---------- narração, placar e painéis ----------
   function nomeHtml(u) { return `<b class="${u.lado ? 'n-ini' : 'n-ali'}">${esc(u.nome)}</b>`; }
   function narrar(ev, a, t, cura) {
     const A = nomeHtml(a), T = t ? nomeHtml(t) : '';
@@ -338,15 +383,14 @@ const Campo = (function () {
     const a = document.getElementById('bvivos0'), b = document.getElementById('bvivos1'), t = document.getElementById('bturno');
     if (a) a.textContent = vivos(0);
     if (b) b.textContent = vivos(1);
-    if (t) t.textContent = 'Turno ' + (C.turno || 0);
+    if (t) t.textContent = 'Turno ' + C.turno;
   }
-
-  // Painéis das equipes (fora do canvas): vida e carga da habilidade (a cada 3 turnos)
   function marcarAtor(a) {
     document.querySelectorAll('.eb.is-age').forEach(el => el.classList.remove('is-age'));
     const el = document.getElementById('eb-' + a.uid);
     if (el) el.classList.add('is-age');
   }
+  // Painéis das equipes: vida e carga da habilidade (a cada 3 turnos)
   function atualizarElenco() {
     for (const u of Object.values(C.U)) {
       const el = document.getElementById('eb-' + u.uid);
@@ -371,8 +415,9 @@ const Campo = (function () {
   // ---------- quadro a quadro ----------
   function quadro(agora) {
     if (!C || !C.ativo) return;
-    const dt = Math.min(50, agora - C.ultimo) * C.vel;
+    let dt = Math.min(50, agora - C.ultimo) * C.vel;
     C.ultimo = agora;
+    if (agora < C.pausaAte) dt = 0;                    // congela um instante no impacto
     C.relogio += dt;
     atualizar(dt);
     desenhar();
@@ -383,26 +428,39 @@ const Campo = (function () {
   }
   function atualizar(dt) {
     for (const u of Object.values(C.U)) {
-      if (u.destino) {
-        const dx = u.destino.x - u.x, dy = u.destino.y - u.y, d = Math.hypot(dx, dy);
-        const passo = VEL_ANDAR * (u.classe === 'dragao' ? 0.85 : 1) * dt;
-        if (Math.abs(dx) > 0.5) u.dir = dx > 0 ? 1 : -1;
-        if (d <= passo) { u.x = u.destino.x; u.y = u.destino.y; const ok = u.destino.ok; u.destino = null; ok(); }
+      if (u.destino && !u.morto) {
+        const d0 = u.destino;
+        const dx = d0.x - u.x, dy = d0.y - u.y, d = Math.hypot(dx, dy);
+        const passo = d0.vel * (u.classe === 'dragao' ? 0.9 : 1) * dt;
+        if (!d0.recuo && Math.abs(dx) > 0.5) u.dir = dx > 0 ? 1 : -1;
+        if (C.relogio > u.proxPoeira && u.classe !== 'dragao' && dt > 0) {
+          u.proxPoeira = C.relogio + (d0.vel >= VEL_AVANCO ? 80 : 150);
+          poeira(u.x, u.y);
+        }
+        if (d <= passo) { u.x = d0.x; u.y = d0.y; u.destino = null; d0.ok(); }
         else { u.x += dx / d * passo; u.y += dy / d * passo; }
       }
       u.hpVis += (u.hpReal - u.hpVis) * Math.min(1, dt / 160);
+      if (u.acao && C.relogio - u.acao.t0 > u.acao.dur) u.acao = null;
+      if (u.reacao && C.relogio - u.reacao.t0 > u.reacao.dur) u.reacao = null;
     }
-    for (const p of C.particulas) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 0.00006 * dt; }
+    for (const p of C.particulas) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; if (!p.chao) p.vy += 0.00006 * dt; }
     C.particulas = C.particulas.filter(p => p.t < p.vida);
     for (const e of C.efeitos) {
-      if (e.tipo === 'proj' && !e.fim && C.relogio - e.ini >= e.dur) { e.fim = true; e.ok(); }
-      if (e.tipo === 'proj' && !e.fim) {
+      const ativo = C.relogio - e.ini < e.dur;
+      if (e.tipo === 'proj' && !e.fim && !ativo) { e.fim = true; e.ok(); }
+      if (e.tipo === 'proj' && !e.fim && dt > 0) {
         const k = (C.relogio - e.ini) / e.dur;
         const x = e.x0 + (e.x1 - e.x0) * k, y = e.y0 + (e.y1 - e.y0) * k;
-        const rastro = { fogo: ['#ff7a1a', '#ffd34d'], raio: ['#b89cff', '#8b6cff'], luz: ['#7dffb0', '#ffe08a'], sagrado: ['#ffe08a', '#ffffff'] }[e.subtipo];
+        const rastro = { fogo: ['#ff7a1a', '#ffd34d'], raio: ['#b89cff', '#8b6cff'], luz: ['#7dffb0', '#ffe08a'], sagrado: ['#ffe08a', '#ffffff'], flechaForte: ['#c6f0ff'] }[e.subtipo];
         if (rastro && Math.random() < 0.7) C.particulas.push({ x, y, vx: 0, vy: 0, vida: 220, cor: escolher(Math.random, rastro), t: 0 });
       }
-      if (e.tipo === 'sopro' && C.relogio - e.ini < e.dur) {
+      // Energia se acumulando na ponta do cajado / do arco durante a preparação
+      if (e.tipo === 'carga' && ativo && !e.u.morto && dt > 0 && Math.random() < (e.forte ? 0.9 : 0.55)) {
+        const p = pontaDaArma(e.u), ang = Math.random() * Math.PI * 2, raio = e.forte ? 7 : 5;
+        C.particulas.push({ x: p.x + Math.cos(ang) * raio, y: p.y + Math.sin(ang) * raio, vx: -Math.cos(ang) * 0.02, vy: -Math.sin(ang) * 0.02, vida: 260, cor: escolher(Math.random, e.cores), t: 0 });
+      }
+      if (e.tipo === 'sopro' && ativo && dt > 0) {
         const a = e.a, bx = a.x + a.dir * 8, by = a.y - a.spr.h * 0.55;
         for (let i = 0; i < 3; i++) {
           const dx = e.alvo.x - bx + (Math.random() - 0.5) * 40, dy = e.alvo.y - 10 - by + (Math.random() - 0.5) * 30, d = Math.hypot(dx, dy) || 1;
@@ -411,16 +469,23 @@ const Campo = (function () {
         }
       }
     }
-    C.efeitos = C.efeitos.filter(e => C.relogio - e.ini < (e.dur + 50) || (e.tipo === 'proj' && !e.fim));
+    C.efeitos = C.efeitos.filter(e => C.relogio - e.ini < (e.dur + 60) || (e.tipo === 'proj' && !e.fim));
     C.textos = C.textos.filter(t => C.relogio - t.ini < 1000);
   }
 
   function desenhar() {
     const x = C.ctx, W = C.W, H = C.H;
+    x.save();
+    x.fillStyle = '#0b0814';
+    x.fillRect(0, 0, W, H);
+    if (C.tremor && C.relogio < C.tremor.ate) {
+      const f = C.tremor.forca;
+      x.translate(Math.round((Math.random() - 0.5) * 2 * f), Math.round((Math.random() - 0.5) * 2 * f));
+    }
     x.drawImage(C.terreno, 0, 0);
     const unidades = Object.values(C.U).sort((p, q) => (p.morto === q.morto ? p.y - q.y : p.morto ? -1 : 1));
 
-    // colunas de luz ficam atrás dos personagens
+    // colunas de luz e poeira ficam atrás dos personagens
     for (const e of C.efeitos) if (e.tipo === 'coluna') {
       const k = (C.relogio - e.ini) / e.dur;
       x.globalAlpha = Math.max(0, 0.5 * (1 - k));
@@ -428,6 +493,12 @@ const Campo = (function () {
       x.fillRect(Math.round(e.x - 5), 0, 10, Math.round(e.y));
       x.globalAlpha = 1;
     }
+    for (const p of C.particulas) if (p.chao) {
+      x.globalAlpha = Math.max(0, 0.7 * (1 - p.t / p.vida));
+      x.fillStyle = p.cor;
+      x.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+    }
+    x.globalAlpha = 1;
 
     for (const u of unidades) desenharUnidade(x, u);
 
@@ -447,67 +518,83 @@ const Campo = (function () {
           x.fillStyle = cor; x.fillRect(px - r, py - r + 1, r * 2, r * 2 - 2); x.fillRect(px - r + 1, py - r, r * 2 - 2, r * 2);
           x.fillStyle = '#ffffff'; x.fillRect(px - 1, py - 1, 1, 1);
         }
+      } else if (e.tipo === 'flechaArmada' && !e.u.morto && k < 1) {
+        // flecha encaixada no arco enquanto o arqueiro mira
+        const a = e.u, p = pontaDaArma(a);
+        x.fillStyle = '#e8dcc0';
+        for (let i = 0; i < 6; i++) x.fillRect(Math.round(p.x - a.dir * i), Math.round(p.y), 1, 1);
+        x.fillStyle = '#ffffff'; x.fillRect(Math.round(p.x + a.dir), Math.round(p.y), 1, 1);
       } else if (e.tipo === 'corte') {
-        x.strokeStyle = e.forte ? '#ffe08a' : '#ffffff';
+        x.strokeStyle = e.cor || (e.forte ? '#ffe08a' : '#ffffff');
         x.globalAlpha = 1 - k;
         x.lineWidth = 1;
-        x.beginPath(); x.arc(Math.round(e.x), Math.round(e.y), 6 + k * 4, -2.4 + k, -0.6 + k); x.stroke();
+        x.beginPath();
+        if (e.dir < 0) x.arc(Math.round(e.x), Math.round(e.y), 6 + k * 4, Math.PI + 0.6 - k, Math.PI + 2.4 - k);
+        else x.arc(Math.round(e.x), Math.round(e.y), 6 + k * 4, -2.4 + k, -0.6 + k);
+        x.stroke();
         x.globalAlpha = 1;
       } else if (e.tipo === 'onda') {
         x.strokeStyle = e.cor; x.globalAlpha = 1 - k; x.lineWidth = 1;
         x.beginPath(); x.ellipse(Math.round(e.x), Math.round(e.y), 4 + k * 22, 2 + k * 11, 0, 0, 7); x.stroke();
         x.globalAlpha = 1;
+      } else if (e.tipo === 'anel' && !e.u.morto) {
+        // anel discreto ao redor de quem recebeu cura ou escudo
+        x.strokeStyle = e.cor; x.globalAlpha = 0.85 * (1 - k); x.lineWidth = 1;
+        x.beginPath(); x.ellipse(Math.round(e.u.x), Math.round(e.u.y), 6 + k * 6, 2 + k * 2, 0, 0, 7); x.stroke();
+        x.globalAlpha = 1;
       }
     }
     for (const p of C.particulas) {
+      if (p.chao) continue;
       x.globalAlpha = Math.max(0, 1 - p.t / p.vida);
       x.fillStyle = p.cor;
       const s = p.grande ? 2 : 1;
       x.fillRect(Math.round(p.x), Math.round(p.y), s, s);
     }
     x.globalAlpha = 1;
+    x.restore();
     desenharHud();
   }
 
+  function estadoDe(u) {
+    return {
+      classe: u.classe, sem: u.sem, t: C.relogio, calmo: C.calmo,
+      andando: !!u.destino, corrida: !!(u.destino && u.destino.vel >= VEL_AVANCO),
+      acao: u.acao, reacao: u.reacao, escudo: u.escudo > 0,
+      cansado: u.hpReal / u.hpMax < 0.25, vitoria: u.vitoria, derrota: u.derrota,
+    };
+  }
   function desenharUnidade(x, u) {
-    const spr = u.spr;
-    const andando = !!u.destino;
-    let ox = 0, oy = 0;
-    if (u.investida && C.relogio < u.investida.ate) {
-      const k = 1 - (u.investida.ate - C.relogio) / 180;
-      const f = Math.sin(Math.max(0, Math.min(1, k)) * Math.PI);
-      ox = u.investida.dx * f; oy = u.investida.dy * f;
-    }
-    const px = Math.round(u.x + ox), py = Math.round(u.y + oy);
+    const R = u.rig;
+    const flip = flipDe(u);
     if (u.morto) {
-      // caído: deitado e sem cor
-      const k = Math.min(1, (C.relogio - u.morteT) / 300);
-      x.save();
-      x.globalAlpha = 1 - 0.35 * k;
-      x.translate(px, py - 3);
-      x.rotate(u.dir * (Math.PI / 2) * k);
-      x.drawImage(k < 1 ? spr.parado.normal : spr.parado.cinza, -Math.round(spr.w / 2), -spr.h + 3);
-      x.restore();
+      // pulinho, queda para trás com quique, e fica caído sem cor
+      const k = (C.relogio - u.morteT) / 650;
+      const P = Anim.pose({ classe: u.classe, sem: u.sem, t: C.relogio, calmo: true });
+      P.arma.rot = flip * 0.9; P.cabeca.rot = flip * 0.15;
+      let giro = 0;
+      if (k < 0.22) P.salto = -Math.round(3 * Math.sin(Math.PI * k / 0.22));
+      else giro = -u.dir * (Math.PI / 2) * Anim.quica((k - 0.22) / 0.55);
+      if (!u.poeiraQueda && k > 0.5) { u.poeiraQueda = true; poeira(u.x, u.y, 6); }
+      Sprites.desenharRig(x, R, P, { x: u.x, y: u.y - (giro ? 3 : 0), flip, giro,
+        cinza: k > 0.85, flash: C.relogio < u.flash, alpha: k > 0.85 ? 0.8 : 1 });
       return;
     }
-    // sombra
+    const P = Anim.pose(estadoDe(u));
+    const altura = Math.max(0, -P.salto);
+    // sombra: encolhe quando o personagem sobe
     x.fillStyle = 'rgba(0,0,0,.28)';
-    x.beginPath(); x.ellipse(px, py, Math.round(spr.w * 0.32), 2.5, 0, 0, 7); x.fill();
-    const quadro = andando ? (Math.floor(C.relogio / 130) % 2 ? spr.a : spr.b) : spr.parado;
-    const respira = andando ? (Math.floor(C.relogio / 130) % 2) : (Math.sin(C.relogio / 380 + u.uid) > 0.6 ? 1 : 0);
-    const img = C.relogio < u.flash ? quadro.flash : quadro.normal;
-    x.save();
-    x.translate(px, py - respira);
-    if (u.dir < 0) x.scale(-1, 1);
-    x.drawImage(img, -Math.round(spr.w / 2), -spr.h + 2);
-    x.restore();
-    // escudo
+    x.beginPath(); x.ellipse(Math.round(u.x), Math.round(u.y), Math.max(3, Math.round(R.w * 0.32 - altura * 0.4)), 2.5, 0, 0, 7); x.fill();
+    Sprites.desenharRig(x, R, P, { x: u.x, y: u.y, flip, flash: C.relogio < u.flash });
+    const topo = Math.round(u.y + P.salto) - R.h;
+    // escudo: bolha que pulsa enquanto dura
     if (u.escudo > 0) {
-      x.strokeStyle = 'rgba(200,235,255,.75)'; x.lineWidth = 1;
-      x.beginPath(); x.ellipse(px, py - spr.h / 2, spr.w / 2 + 1, spr.h / 2 + 1, 0, 0, 7); x.stroke();
+      x.strokeStyle = 'rgba(200,235,255,' + (0.45 + 0.25 * Math.sin(C.relogio / 160)).toFixed(2) + ')';
+      x.lineWidth = 1;
+      x.beginPath(); x.ellipse(Math.round(u.x), Math.round(topo + R.h / 2), R.w / 2 + 1, R.h / 2 + 1, 0, 0, 7); x.stroke();
     }
     // barra de vida
-    const bw = u.chefe ? 22 : 16, bx = px - bw / 2, by = py - spr.h - 3;
+    const bw = u.chefe ? 22 : 16, bx = Math.round(u.x - bw / 2), by = topo - 2;
     x.fillStyle = '#140f1f'; x.fillRect(bx - 1, by - 1, bw + 2, 4);
     x.fillStyle = '#3a3346'; x.fillRect(bx, by, bw, 2);
     const fr = Math.max(0, u.hpVis / u.hpMax);
@@ -524,16 +611,15 @@ const Campo = (function () {
     h.lineJoin = 'round';
     for (const u of Object.values(C.U)) {
       if (u.morto || C.relogio > u.rotulo) continue;
-      const txt = u.nome;
       h.font = `700 ${Math.round(11 * C.dpr)}px Inter, sans-serif`;
-      const w = h.measureText(txt).width + 10 * C.dpr, hh = 16 * C.dpr;
-      const cx = u.x * k, cy = (u.y - u.spr.h - 6) * k - hh;
+      const w = h.measureText(u.nome).width + 10 * C.dpr, hh = 16 * C.dpr;
+      const cx = u.x * k, cy = (u.y - u.spr.h - 8) * k - hh;
       h.fillStyle = 'rgba(16,12,28,.92)';
       h.fillRect(cx - w / 2, cy, w, hh);
       h.fillStyle = u.lado ? '#ff5b4a' : '#f2c14e';
       h.fillRect(cx - w / 2, cy + hh - 2 * C.dpr, w, 2 * C.dpr);
       h.fillStyle = '#fff';
-      h.fillText(txt, cx, cy + hh - 5 * C.dpr);
+      h.fillText(u.nome, cx, cy + hh - 5 * C.dpr);
     }
     for (const t of C.textos) {
       const p = (C.relogio - t.ini) / 1000;
@@ -557,10 +643,17 @@ const Campo = (function () {
     C.parar = true;
     for (const ev of C.sim.eventos) {
       if (ev._feito) continue;
-      aplicar(ev, ev.alvos.map(x => ({ ...x, u: C.U[x.uid] })));
+      aplicar(ev, ev.alvos.map(x => ({ ...x, u: C.U[x.uid] })), C.U[ev.ator]);
     }
-    for (const u of Object.values(C.U)) { u.hpVis = u.hpReal; if (u.destino) { u.destino = null; } }
-    C.textos = [];
+    for (const u of Object.values(C.U)) {
+      u.hpVis = u.hpReal; u.destino = null; u.acao = null; u.reacao = null;
+      if (!u.morto) { u.x = u.casa.x; u.y = u.casa.y; }
+      else if (C.relogio - u.morteT < 700) { u.morteT = C.relogio - 700; u.poeiraQueda = true; }
+    }
+    comemorar(C);
+    C.textos = []; C.pausaAte = 0; C.tremor = null;
+    for (const e of C.efeitos) if (e.tipo === 'proj' && !e.fim) { e.fim = true; e.ok(); }
+    C.efeitos = [];
     document.querySelectorAll('.eb.is-age').forEach(el => el.classList.remove('is-age'));
     atualizarElenco();
   }

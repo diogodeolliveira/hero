@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Animações · revisão</title>
+  <style>
+    body { margin: 0; padding: 16px; background: #1c2a1c; color: #eee; font: 13px system-ui, sans-serif; }
+    h2 { margin: 18px 0 6px; font-size: 15px; }
+    .tira { display: flex; align-items: flex-end; gap: 2px; margin-bottom: 6px; }
+    .tira span { width: 120px; flex: none; font-size: 12px; opacity: .85; }
+    canvas { image-rendering: pixelated; background: #2b3d2b; display: block; }
+    .vivos { display: flex; flex-wrap: wrap; gap: 10px; }
+    .vivos figure { margin: 0; text-align: center; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <!-- Ferramenta de desenvolvimento: revisa as animações quadro a quadro (não faz parte do jogo) -->
+  <div id="vivos" class="vivos"></div>
+  <div id="g"></div>
+  <script src="../js/dados.js"></script>
+  <script src="../js/bonecos.js"></script>
+  <script src="../js/sprites.js"></script>
+  <script src="../js/animacao.js"></script>
+  <script>
+    const ESC = Number(new URLSearchParams(location.search).get('x') || 3), PAD = { x: 8, topo: 14, base: 3 };
+    const NOMES = { guerreiro: 'Isolde', mago: 'Ysolde', arqueiro: 'Ravena', dragao: 'Ignarax', curandeiro: 'Seraphine' };
+    const ACAO = { guerreiro: ['golpe', 'grito'], mago: ['conjurar', 'conjurarForte'], arqueiro: ['disparo', 'disparoForte'], dragao: ['mordida', 'sopro'], curandeiro: ['conjurar', 'bencao'] };
+    function quadro(R, e, flip = 1) {
+      const W = R.w + PAD.x * 2, H = R.h + PAD.topo + PAD.base;
+      const b = document.createElement('canvas'); b.width = W; b.height = H;
+      const x = b.getContext('2d');
+      const P = Anim.pose(e);
+      x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(W / 2 - 7, H - PAD.base - 1, 14, 2);
+      Sprites.desenharRig(x, R, P, { x: W / 2, y: H - PAD.base, flip });
+      const c = document.createElement('canvas'); c.width = W * ESC; c.height = H * ESC;
+      const cx = c.getContext('2d'); cx.imageSmoothingEnabled = false; cx.drawImage(b, 0, 0, c.width, c.height);
+      return c;
+    }
+    function tira(rotulo, R, fn, n = 8) {
+      const d = document.createElement('div'); d.className = 'tira';
+      d.innerHTML = `<span>${rotulo}</span>`;
+      for (let i = 0; i < n; i++) d.append(quadro(R, fn(i / (n - 1))));
+      return d;
+    }
+    const g = document.getElementById('g');
+    const so = new URLSearchParams(location.search).get('classe');
+    for (const classe of ORDEM_CLASSES.filter(c => !so || c === so)) {
+      const h = HEROIS.find(x => x.nome === NOMES[classe]);
+      const R = Sprites.rig(aparenciaHeroi(h));
+      const base = { classe, sem: 0, t: 0 };
+      const h2 = document.createElement('h2'); h2.textContent = `${CLASSES[classe].nome} (${h.nome}) · ${R.ordem.join(', ')}`; g.append(h2);
+      g.append(tira('repouso (2s)', R, k => ({ ...base, t: k * 2000 })));
+      g.append(tira('andar', R, k => ({ ...base, t: k * 460, andando: true })));
+      for (const a of ACAO[classe]) g.append(tira(a, R, k => ({ ...base, t: 1000 + k * Anim.DUR[a], acao: { nome: a, t0: 1000, dur: Anim.DUR[a] } })));
+      g.append(tira('dano', R, k => ({ ...base, t: 1000 + k * 320, reacao: { nome: 'dano', t0: 1000, dur: 320, lado: -1 } })));
+      if (classe === 'guerreiro') g.append(tira('defesa (escudo)', R, k => ({ ...base, escudo: true, t: 1000 + k * 320, reacao: { nome: 'defesa', t0: 1000, dur: 320, lado: -1 } })));
+      g.append(tira('vitória', R, k => ({ ...base, t: k * 760, vitoria: true })));
+      g.append(tira('derrota / cansado', R, k => k < 0.5 ? ({ ...base, t: k * 1800, derrota: true }) : ({ ...base, t: k * 1800, cansado: true })));
+      g.append(tira('entrada (invocação)', R, k => ({ ...base, t: 1000 + k * 1300, acao: { nome: 'entrada', t0: 1000, dur: 1300 } })));
+    }
+    // vivos: cada classe repetindo as ações em sequência
+    const vivos = document.getElementById('vivos');
+    for (const classe of ORDEM_CLASSES) {
+      const h = HEROIS.find(x => x.nome === NOMES[classe]);
+      const f = document.createElement('figure');
+      f.innerHTML = `<canvas class="vivo" data-heroi="${h.id}" style="width:150px"></canvas><figcaption>${h.nome}</figcaption>`;
+      vivos.append(f);
+    }
+    Palco.hidratar(vivos);
+    let i = 0;
+    setInterval(() => {
+      document.querySelectorAll('#vivos canvas').forEach((el, n) => {
+        const classe = ORDEM_CLASSES[n];
+        const seq = [...ACAO[classe], 'apresentacao', 'vitoria'];
+        Palco.agir(el, seq[i % seq.length]);
+      });
+      i++;
+    }, 1800);
+  </script>
+</body>
+</html>

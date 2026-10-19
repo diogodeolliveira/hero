@@ -227,5 +227,6 @@ function bonecoSvg(ap, passo, w, h) {
 
 // Personagem em pixel art (js/sprites.js) como imagem para as telas
 function boneco(ap, cls = '') {
-  return `<img class="boneco sprite sp-${ap.classe} ${cls}" src="${Sprites.url(ap)}" alt="" draggable="false">`;
+  const atraso = (Math.random() * 1.9).toFixed(2);   // cada um respira no seu tempo
+  return `<img class="boneco sprite sp-${ap.classe} ${cls}" src="${Sprites.url(ap)}" alt="" draggable="false" style="animation-delay:-${atraso}s">`;
 }

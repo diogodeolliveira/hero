@@ -262,6 +262,12 @@ const Sprites = (function () {
 
   const PERNAS = { guerreiro: 20, mago: 25, arqueiro: 17, curandeiro: 22, dragao: 19 };
 
+  // Cada peça pertence a uma parte do esqueleto (camada animada)
+  for (const p of [ELMO_FECHADO, ELMO_ABERTO, CHIFRES, PRESAS, BARBA, SEM_AUREOLA, CAPUZ_SOMBRIO, COROA]) p.camada = 'cabeca';
+  CABELO_LONGO.camada = 'cabelo';
+  ESPADA.camada = 'arma'; CAJADO_MAGO.camada = 'arma'; CAJADO_CURA.camada = 'arma'; ARCO.camada = 'arma';
+  ESCUDO.camada = 'escudo'; ALJAVA.camada = 'costas'; CAUDA.camada = 'cauda';
+
   // ---------- montagem ----------
   function espelhar(rows) { return rows.map(l => l.split('').reverse().join('')); }
   function pecasDe(ap) {
@@ -288,7 +294,7 @@ const Sprites = (function () {
         p.push(CAJADO_CURA);
         break;
       case 'dragao':
-        p.push({ x: 0, y: 3, atras: true, rows: ASA }, { x: 19, y: 3, atras: true, rows: espelhar(ASA) }, CAUDA);
+        p.push({ x: 0, y: 3, atras: true, rows: ASA, camada: 'asaE' }, { x: 19, y: 3, atras: true, rows: espelhar(ASA), camada: 'asaD' }, CAUDA);
         if (ap.trim === '#f2c14e') p.push(COROA);
         break;
     }
@@ -387,5 +393,142 @@ const Sprites = (function () {
     if (!urls.has(k)) urls.set(k, quadros(ap).parado.toDataURL());
     return urls.get(k);
   }
-  return { quadros, url };
+  // ---------- esqueleto por partes (animação) ----------
+  // O mesmo desenho, separado em camadas: cada parte gira em torno da sua articulação.
+  const CABECA_ATE = { guerreiro: 9, mago: 12, arqueiro: 9, curandeiro: 9, dragao: 10 };
+  const PIVO_ARMA = { guerreiro: [17, 16], mago: [18, 16], arqueiro: [1, 10], curandeiro: [17, 13] };
+  // Quem segue quem: a cabeça acompanha o tronco, o chapéu acompanha a cabeça...
+  const PAI = { cabeca: 'tronco', arma: 'tronco', escudo: 'tronco', capa: 'tronco', costas: 'tronco', asaE: 'tronco', asaD: 'tronco', cauda: 'tronco', cabelo: 'cabeca', chapeu: 'cabeca', aureola: 'cabeca' };
+  const ORDEM = {
+    humano: ['capa', 'costas', 'pernaE', 'pernaD', 'tronco', 'cabelo', 'cabeca', 'chapeu', 'aureola', 'escudo', 'arma'],
+    dragao: ['asaE', 'asaD', 'cauda', 'pernaE', 'pernaD', 'tronco', 'cabeca'],
+  };
+  // Partes que se soltam do corpo ganham contorno completo; as do corpo, só por fora
+  const SOLTAS = new Set(['arma', 'escudo', 'aureola', 'asaE', 'asaD', 'cauda', 'costas']);
+
+  function parteDoMolde(classe, ch, x, y, W) {
+    if (ch === 'k' || ch === 'K') return 'capa';
+    if (classe === 'mago' && y <= 5) return 'chapeu';
+    if (classe === 'curandeiro' && y === 0) return 'aureola';
+    if (y < CABECA_ATE[classe]) return 'cabeca';
+    if (y >= PERNAS[classe]) return x < W / 2 ? 'pernaE' : 'pernaD';
+    return 'tronco';
+  }
+  // Uma grade por parte; a peça por cima não apaga o que está embaixo (ex.: braço atrás do escudo)
+  function partes(ap) {
+    const base = MOLDE[ap.classe];
+    const W = base[0].length, H = base.length;
+    const L = {};
+    const pintar = (n, x, y, ch) => {
+      if (!L[n]) L[n] = Array.from({ length: H }, () => Array(W).fill('.'));
+      L[n][y][x] = ch;
+    };
+    base.forEach((linha, y) => linha.padEnd(W, '.').slice(0, W).split('').forEach((ch, x) => {
+      if (ch !== '.') pintar(parteDoMolde(ap.classe, ch, x, y, W), x, y, ch);
+    }));
+    for (const pc of pecasDe(ap)) pc.rows.forEach((linha, dy) => linha.split('').forEach((ch, dx) => {
+      const X = pc.x + dx, Y = pc.y + dy;
+      if (ch === '.' || X < 0 || Y < 0 || X >= W || Y >= H) return;
+      if (ch === '_') { for (const n in L) L[n][Y][X] = '.'; return; }
+      pintar(pc.camada || parteDoMolde(ap.classe, ch, X, Y, W), X, Y, ch);
+    }));
+    return { L, W, H };
+  }
+  function desenharParte(g, uniao, pal, W, H) {
+    const meu = (X, Y) => Y >= 0 && Y < H && X >= 0 && X < W && g[Y][X] !== '.' && pal[g[Y][X]];
+    let algum = false;
+    for (let Y = 0; Y < H && !algum; Y++) for (let X = 0; X < W; X++) if (meu(X, Y)) { algum = true; break; }
+    if (!algum) return null;
+    const c = document.createElement('canvas');
+    c.width = W + 2; c.height = H + 2;
+    const x = c.getContext('2d');
+    const cheio = uniao || meu;
+    x.fillStyle = '#140f1f';
+    for (let Y = -1; Y <= H; Y++) for (let X = -1; X <= W; X++) {
+      if (cheio(X, Y)) continue;
+      if (meu(X - 1, Y) || meu(X + 1, Y) || meu(X, Y - 1) || meu(X, Y + 1)) x.fillRect(X + 1, Y + 1, 1, 1);
+    }
+    for (let Y = 0; Y < H; Y++) for (let X = 0; X < W; X++) {
+      const cor = meu(X, Y);
+      if (cor) { x.fillStyle = cor; x.fillRect(X + 1, Y + 1, 1, 1); }
+    }
+    return c;
+  }
+  function tingir(src, cor) {
+    const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+    const x = c.getContext('2d');
+    x.drawImage(src, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = cor; x.fillRect(0, 0, c.width, c.height);
+    return c;
+  }
+  function acinzentar(src) {
+    const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+    const x = c.getContext('2d');
+    x.drawImage(src, 0, 0);
+    try {
+      const d = x.getImageData(0, 0, c.width, c.height);
+      for (let i = 0; i < d.data.length; i += 4) {
+        const l = (d.data[i] * 0.3 + d.data[i + 1] * 0.59 + d.data[i + 2] * 0.11) * 0.75;
+        d.data[i] = d.data[i + 1] = d.data[i + 2] = l;
+      }
+      x.putImageData(d, 0, 0);
+    } catch (e) { /* sem leitura de pixels: fica colorido */ }
+    return c;
+  }
+  const rigs = new Map();
+  function rig(ap) {
+    const k = chave(ap);
+    if (rigs.has(k)) return rigs.get(k);
+    const { L, W, H } = partes(ap);
+    const pal = paletaDe(ap);
+    const uniao = (X, Y) => Y >= 0 && Y < H && X >= 0 && X < W && Object.values(L).some(m => m[Y][X] !== '.' && pal[m[Y][X]]);
+    const camadas = {};
+    for (const n in L) {
+      const cv = desenharParte(L[n], SOLTAS.has(n) ? null : uniao, pal, W, H);
+      if (cv) camadas[n] = { cv, flash: tingir(cv, '#ffffff'), cinza: acinzentar(cv) };
+    }
+    const meio = W / 2, ca = CABECA_ATE[ap.classe], pe = PERNAS[ap.classe];
+    const pivos = {
+      tronco: [meio, pe], pernaE: [meio - 2, pe], pernaD: [meio + 2, pe],
+      cabeca: [meio, ca], chapeu: [meio, 6], aureola: [meio, 0], cabelo: [meio, 7],
+      capa: [meio, ca + 1], costas: [meio, ca + 1],
+      arma: PIVO_ARMA[ap.classe] || [meio, ca], escudo: [3, 15],
+      asaE: [8, 11], asaD: [W - 9, 11], cauda: [22, 15],
+    };
+    for (const n in pivos) pivos[n] = [pivos[n][0] + 1, pivos[n][1] + 1]; // +1: borda do contorno
+    const R = { camadas, pivos, w: W + 2, h: H + 2, classe: ap.classe,
+      ordem: ORDEM[ap.classe === 'dragao' ? 'dragao' : 'humano'].filter(n => camadas[n]) };
+    rigs.set(k, R);
+    return R;
+  }
+  // Aplica a transformação de uma parte e de todos os "pais" dela (articulações em cadeia)
+  function articular(ctx, R, P, n) {
+    if (PAI[n]) articular(ctx, R, P, PAI[n]);
+    const pc = P[n];
+    if (!pc) return;
+    const [px, py] = R.pivos[n];
+    ctx.translate(px + Math.round(pc.dx || 0), py + Math.round(pc.dy || 0));
+    if (pc.rot) ctx.rotate(pc.rot);
+    ctx.translate(-px, -py);
+  }
+  // Desenha o personagem numa pose. (x, y) = ponto dos pés no mundo.
+  function desenharRig(ctx, R, P, o) {
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;   // giros e achatamentos sem borrar os pixels
+    ctx.translate(Math.round(o.x), Math.round(o.y + (P.salto || 0)));
+    if (o.giro) ctx.rotate(o.giro);
+    if (o.flip < 0) ctx.scale(-1, 1);
+    if (P.sx !== 1 || P.sy !== 1) ctx.scale(P.sx || 1, P.sy || 1);
+    ctx.translate(-Math.round(R.w / 2), -R.h + 1);
+    if (o.alpha != null) ctx.globalAlpha = o.alpha;
+    for (const n of R.ordem) {
+      const L = R.camadas[n];
+      ctx.save();
+      articular(ctx, R, P, n);
+      ctx.drawImage(o.cinza ? L.cinza : o.flash ? L.flash : L.cv, 0, 0);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  return { quadros, url, rig, desenharRig };
 })();

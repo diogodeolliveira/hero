@@ -129,10 +129,37 @@ function seloClasse(classe) {
   return `<span class="selo selo--classe" style="--cl:var(--cl-${classe})">${icone(ICONE_CLASSE[classe])}${CLASSES[classe].nome}</span>`;
 }
 function retrato(ap, cls = '') { return `<div class="retrato ${cls}" style="--cl:var(--cl-${ap.classe})">${boneco(ap)}</div>`; }
+// Personagem animado (esqueleto + poses, js/animacao.js). Fora da tela, para sozinho.
+function vivo(id, { anim = '', atraso = 0, cls = '' } = {}) {
+  const h = HEROI[id];
+  return `<canvas class="vivo sp-${h.classe} ${cls}" data-heroi="${id}"${anim ? ` data-anim="${anim}" data-atraso="${atraso}"` : ''} aria-hidden="true"></canvas>`;
+}
+const ANIM_ATAQUE = { guerreiro: 'golpe', mago: 'conjurar', arqueiro: 'disparo', dragao: 'mordida', curandeiro: 'conjurar' };
+const ANIM_HAB = { guerreiro: 'grito', mago: 'conjurarForte', arqueiro: 'disparoForte', dragao: 'sopro', curandeiro: 'bencao' };
+// Anima a troca de posições na formação (mede antes, mede depois e anima a diferença)
+function comTransicao(fn) {
+  const antes = new Map();
+  document.querySelectorAll('.vaga[data-heroi]').forEach(el => antes.set(el.dataset.heroi, el.getBoundingClientRect()));
+  fn();
+  if (movimentoReduzido()) return;
+  document.querySelectorAll('.vaga[data-heroi]').forEach(el => {
+    const r0 = antes.get(el.dataset.heroi), r1 = el.getBoundingClientRect();
+    const tela = el.querySelector('canvas.vivo');
+    if (!r0) {
+      el.animate([{ opacity: 0, transform: 'translateY(10px) scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      Palco.agir(tela, 'apresentacao', 140);
+      return;
+    }
+    const dx = r0.left - r1.left, dy = r0.top - r1.top;
+    if (Math.abs(dx) + Math.abs(dy) < 2) return;
+    el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 440, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    Palco.agir(tela, 'apresentacao', 260);
+  });
+}
 function cena(regiao, W, H) { return `<img class="cena-fundo" src="${Campo.cenaUrl(regiao, W, H)}" alt="">`; }
 
 // Card de herói (catálogo, reserva, revelação)
-function hcard(id, { acao = 'detalhe', extra = '', sel = false } = {}) {
+function hcard(id, { acao = 'detalhe', extra = '', sel = false, animado = false, anim = '' } = {}) {
   const h = HEROI[id];
   const meu = tenho(id);
   const ap = aparenciaHeroi(h);
@@ -150,7 +177,7 @@ function hcard(id, { acao = 'detalhe', extra = '', sel = false } = {}) {
   const a = atributos(h, S.herois[id]);
   return `<${tag} class="hcard${h.rar === 'lendario' ? ' is-lendario' : ''}${sel ? ' is-sel' : ''}" data-rar="${h.rar}" ${attrs}>
     <div class="hcard__topo">${seloRar(h.rar)}<span class="hcard__classe" style="--cl:var(--cl-${h.classe})" data-dica="${CLASSES[h.classe].nome}">${icone(ICONE_CLASSE[h.classe])}</span></div>
-    ${retrato(ap)}
+    ${animado ? `<div class="retrato" style="--cl:var(--cl-${h.classe})">${vivo(id, { anim })}</div>` : retrato(ap)}
     <div class="hcard__info">
       <div class="hcard__nome">${esc(h.nome)}</div>
       <div class="hcard__sub">${h.titulo ? esc(h.titulo) : CLASSES[h.classe].nome}</div>
@@ -206,6 +233,7 @@ function render() {
   document.getElementById('nav-topo').innerHTML = navHtml;
   document.getElementById('nav-baixo').innerHTML = navHtml;
   document.getElementById('tela').innerHTML = TELAS[aba]();
+  Palco.hidratar(document.getElementById('tela'));
 }
 function irPara(nova) { aba = nova; render(); window.scrollTo(0, 0); }
 
@@ -252,7 +280,7 @@ function telaInicio() {
             ${blocoXp()}
           </div>
         </div>
-        <div class="aventura__equipe">${S.equipe.filter(Boolean).map(id => boneco(aparenciaHeroi(HEROI[id]))).join('')}</div>
+        <div class="aventura__equipe">${S.equipe.filter(Boolean).map(id => vivo(id)).join('')}</div>
         <div class="aventura__acao">
           <div class="info"><span>${icone('mapa')} ${esc(regiao)}</span><span>Poder da equipe <b class="ouro num">${fmt(poderEquipe())}</b></span></div>
           <button class="btn btn--grande btn--bloco" data-acao="batalharFase">${icone('batalha')}${chefe ? 'Enfrentar o chefe' : 'Continuar aventura'} · Fase ${fase}</button>
@@ -372,8 +400,8 @@ function htmlVaga(i) {
   const rotulo = i < FRENTE ? 'Frente' : 'Trás';
   if (!id) return `<button class="vaga vaga--vazia" data-acao="vaga" data-i="${i}" aria-label="Vaga vazia (${rotulo})">${icone('mais')}<small>Vazia</small></button>`;
   const h = HEROI[id];
-  return `<button class="vaga${vagaAtual === i ? ' is-sel' : ''}" data-rar="${h.rar}" data-acao="vaga" data-i="${i}" aria-label="${esc(h.nome)} (${rotulo}). Trocar">
-    ${retrato(aparenciaHeroi(h))}
+  return `<button class="vaga${vagaAtual === i ? ' is-sel' : ''}" data-rar="${h.rar}" data-acao="vaga" data-i="${i}" data-heroi="${id}" aria-label="${esc(h.nome)} (${rotulo}). Trocar">
+    <div class="retrato" style="--cl:var(--cl-${h.classe})">${vivo(id)}</div>
     <div class="vaga__info"><b>${esc(h.nome)}</b><small>${CLASSES[h.classe].nome} · ${fmt(poderHeroi(id))}</small>${estrelas(S.herois[id])}</div>
   </button>`;
 }
@@ -463,7 +491,7 @@ function telaInvocar() {
       <section class="vitrine" aria-label="Heróis lendários">
         <div class="vitrine__texto"><small>Portal das lendas</small><h2>Heróis lendários podem atender ao chamado</h2></div>
         <div class="vitrine__aneis"></div>
-        <div class="vitrine__herois">${vitrine.map((h, i) => `<span class="${i === 1 ? 'destaque' : ''}" data-dica="${esc(h.nome)} · ${esc(h.titulo)}">${boneco(aparenciaHeroi(h))}</span>`).join('')}</div>
+        <div class="vitrine__herois">${vitrine.map((h, i) => `<span class="${i === 1 ? 'destaque' : ''}" data-dica="${esc(h.nome)} · ${esc(h.titulo)}">${vivo(h.id)}</span>`).join('')}</div>
       </section>
       <div class="portais">${INVOCACOES.map(p => `<section class="card portal portal--${p.id}">
           <div class="portal__arte" aria-hidden="true"><span></span><span></span><span></span></div>
@@ -669,13 +697,14 @@ function mostrarRevelacao(itens, titulo) {
       <h2>${esc(titulo)}</h2>
       <p class="suave">Toque nas cartas para revelar.</p>
       <div class="reveladas">${itens.map((it, i) => `<button class="virar${i === melhor && itens.length > 1 ? ' is-destaque' : ''}" data-rar="${HEROI[it.id].rar}" data-acao="virar" style="--d:${i * 70}ms" aria-label="Revelar carta ${i + 1}">
-          <span class="verso">${icone('invocar')}</span><span class="frente">${hcard(it.id, { acao: null, extra: it.selo })}</span></button>`).join('')}</div>
+          <span class="verso">${icone('invocar')}</span><span class="frente">${hcard(it.id, { acao: null, extra: it.selo, animado: true })}</span></button>`).join('')}</div>
       <div class="destaque-invocacao" id="rdestaque" hidden></div>
       <div id="racoes"><button class="btn btn--sec" data-acao="revelarTodas">Revelar todas</button></div>
     </div>`;
   el.hidden = false;
   el.dataset.melhor = itens[melhor].id;
   document.body.classList.add('travado');
+  Palco.hidratar(el);
 }
 function conferirRevelacao() {
   if (document.querySelectorAll('#revelar .virar:not(.is-revelada)').length) return;
@@ -695,6 +724,7 @@ function abrirModal(html) {
   const el = document.getElementById('modal');
   el.innerHTML = `<div class="modal__caixa" role="dialog" aria-modal="true">${html}</div>`;
   el.hidden = false;
+  Palco.hidratar(el);
   document.body.classList.add('travado');
   const foco = el.querySelector('button, input');
   if (foco) foco.focus({ preventScroll: true });
@@ -704,6 +734,9 @@ function cabModal(titulo) {
 }
 function modalVaga(i) {
   vagaAtual = i;
+  document.querySelectorAll('.vaga.is-sel').forEach(v => v.classList.remove('is-sel'));
+  const sel = document.querySelector(`.vaga[data-i="${i}"]`);
+  if (sel) { sel.classList.add('is-sel'); Palco.agir(sel.querySelector('canvas.vivo'), 'apresentacao'); }
   const atual = S.equipe[i];
   const pAtual = atual ? poderHeroi(atual) : 0;
   const aAtual = atual ? atributos(HEROI[atual], S.herois[atual]) : null;
@@ -751,7 +784,7 @@ function modalDetalhe(id) {
   abrirModal(`${cabModal(esc(h.nome))}
     <div class="detalhe" data-rar="${h.rar}">
       <div class="detalhe__topo">
-        ${retrato(aparenciaHeroi(h), meu ? '' : 'is-bloq')}
+        ${meu ? `<div class="retrato" style="--cl:var(--cl-${h.classe})">${vivo(id, { anim: 'apresentacao', atraso: 160 })}</div>` : retrato(aparenciaHeroi(h), 'is-bloq')}
         <div class="detalhe__nome">
           ${h.titulo ? `<span class="suave">${esc(h.titulo)}</span>` : ''}
           <div class="linha">${seloRar(h.rar)}${seloClasse(h.classe)}</div>
@@ -760,6 +793,12 @@ function modalDetalhe(id) {
             <span class="hcard__poder">${icone('raio')}Poder ${fmt(poder(a))}</span>` : '<span class="mini suave">Atributos no nível 1</span>'}
         </div>
       </div>
+      ${meu ? `<div class="previa" role="group" aria-label="Ver animação">
+        <span class="mini suave">Ver em ação:</span>
+        <button class="chip" data-acao="verAnim" data-anim="${ANIM_ATAQUE[h.classe]}">${icone('espada')}Ataque</button>
+        <button class="chip" data-acao="verAnim" data-anim="${ANIM_HAB[h.classe]}">${icone('raio')}${c.hab.nome}</button>
+        <button class="chip" data-acao="verAnim" data-anim="vitoria">${icone('trofeu')}Vitória</button>
+      </div>` : ''}
       <div class="atributos">
         ${atr('vida', 'Vida', 'hp')}${atr('espada', 'Ataque', 'atk')}${atr('defesa', 'Defesa', 'def')}${atr('velocidade', 'Velocidade', 'spd')}
       </div>
@@ -861,17 +900,29 @@ const ACOES = {
     render();
     mostrarRevelacao(itens, inv.nome);
   },
-  virar: (d, el) => { el.classList.add('is-revelada'); conferirRevelacao(); },
-  revelarTodas: () => { document.querySelectorAll('#revelar .virar').forEach(b => b.classList.add('is-revelada')); conferirRevelacao(); },
+  virar: (d, el) => {
+    if (el.classList.contains('is-revelada')) return;
+    el.classList.add('is-revelada');
+    Palco.agir(el.querySelector('canvas.vivo'), 'entrada');
+    conferirRevelacao();
+  },
+  revelarTodas: () => {
+    document.querySelectorAll('#revelar .virar:not(.is-revelada)').forEach((b, i) => {
+      b.classList.add('is-revelada');
+      Palco.agir(b.querySelector('canvas.vivo'), 'entrada', i * 140);
+    });
+    conferirRevelacao();
+  },
+  verAnim: d => Palco.agir(document.querySelector('#modal canvas.vivo'), d.anim),
   fecharRevelar: () => { fechar('revelar'); render(); },
   irInvocar: () => { fechar('modal'); irPara('invocar'); },
 
-  melhorEquipe: () => { S.equipe = melhorEquipe(S.herois); salvar(); render(); toast('Melhor equipe montada.'); },
+  melhorEquipe: () => { comTransicao(() => { S.equipe = melhorEquipe(S.herois); salvar(); render(); }); toast('Melhor equipe montada.'); },
   vaga: d => modalVaga(Number(d.i)),
-  escolher: d => { colocarNaVaga(Number(d.id), vagaAtual); vagaAtual = null; fechar('modal'); render(); },
-  tirar: () => { S.equipe[vagaAtual] = null; vagaAtual = null; salvar(); fechar('modal'); render(); },
+  escolher: d => { comTransicao(() => { colocarNaVaga(Number(d.id), vagaAtual); vagaAtual = null; fechar('modal'); render(); }); },
+  tirar: () => { comTransicao(() => { S.equipe[vagaAtual] = null; vagaAtual = null; salvar(); fechar('modal'); render(); }); },
   detalhe: d => modalDetalhe(Number(d.id)),
-  escalarEm: d => { colocarNaVaga(Number(d.id), Number(d.i)); render(); modalDetalhe(Number(d.id)); toast('Equipe atualizada.'); },
+  escalarEm: d => { comTransicao(() => { colocarNaVaga(Number(d.id), Number(d.i)); render(); }); modalDetalhe(Number(d.id)); toast('Equipe atualizada.'); },
   tirarHeroi: d => { const i = S.equipe.indexOf(Number(d.id)); if (i >= 0) S.equipe[i] = null; salvar(); render(); modalDetalhe(Number(d.id)); },
   fecharModal: () => { vagaAtual = null; fechar('modal'); if (aba === 'equipe') render(); },
 

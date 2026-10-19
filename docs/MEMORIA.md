@@ -91,6 +91,31 @@ Decisões tomadas, regras do jogo e o porquê de cada escolha. Atualize sempre q
 - A batalha continua automática: os painéis mostram vida e **carga da habilidade** (turnos % 3), dados que já existiam na simulação. Não há ações manuais.
 - Invocação: regras, custos e chances iguais aos de antes; só a apresentação mudou (vitrine, tabela de chances, destaque da melhor carta).
 
+## Animação dos personagens
+
+- **Linguagem:** JavaScript puro no `<canvas>`, a linguagem nativa do navegador. A fluidez vem da técnica, não da linguagem, e não há biblioteca nova nem etapa de compilação.
+- **Esqueleto por partes** (`Sprites.rig` em `js/sprites.js`): o mesmo pixel art dos moldes, separado em camadas (tronco, cabeça, cabelo, chapéu, auréola, arma, escudo, capa, aljava, pernas, asas e cauda), cada uma girando na sua articulação. Nenhum quadro é inventado: são as mesmas peças desenhadas à mão.
+  - As partes "soltas" (arma, escudo, asas) ganham contorno completo; as do corpo, só por fora.
+  - Uma peça por cima não apaga o que está embaixo (o braço continua lá atrás do escudo).
+- **Motor de poses** (`js/animacao.js`, objeto `Anim`): calcula cada parte a cada quadro a partir do estado do personagem.
+  - Repouso: respiração, balanço da capa, do cabelo e do chapéu, levitação dos magos, voo do dragão e gestos ocasionais em tempos diferentes para cada um.
+  - Andar e correr. Ações: golpe, grito, mordida, sopro, disparo, conjurar e bênção.
+  - Reações que **somam** por cima da ação: dano, defesa e cura.
+  - Fim de batalha: vitória, derrota e cansaço (vida abaixo de 25%). Telas: entrada (invocação) e apresentação.
+  - Curvas de aceleração; ataques rápidos e repouso lento.
+- **Regra de ouro do pixel art:** deslocamentos sempre em pixels inteiros, giros desenhados na resolução nativa (sem suavização) e só depois ampliados. A arma nunca gira por cima do rosto; para "erguer", ela sobe e inclina para fora.
+- **Batalha** (`js/campo.js`): segue os eventos reais, na ordem.
+  - Marcha de entrada. O corpo a corpo avança e para **ao lado** do alvo, golpeia no instante do impacto e recua de frente.
+  - Micro-pausa de impacto (hitstop) e tremor leve só em crítico e habilidade.
+  - Flecha encaixada enquanto mira; energia acumulando no cajado.
+  - Queda com quique ao morrer; vencedores comemoram, sobreviventes derrotados ficam cabisbaixos.
+- **Palco** (`Palco` em `js/animacao.js`): personagens vivos fora da batalha (Início, Equipe, detalhe, vitrine e revelação da invocação).
+  - Um único laço de animação; pausa o que está fora da tela (IntersectionObserver) e para sozinho quando não há ninguém para animar.
+  - Miniaturas estáticas respiram com CSS (1 pixel, em degrau).
+- **Transições da equipe:** a troca de vaga mede as posições antes e depois e anima a diferença (técnica FLIP), e o herói faz a apresentação.
+- **Movimento reduzido** (`prefers-reduced-motion`): poses neutras, sem tremor nem hitstop; o jogo funciona igual.
+- **Revisão:** `tools/animacoes.html` mostra cada animação quadro a quadro (`?classe=guerreiro&x=3`).
+
 ## Servidor e publicação
 
 - **Supabase** guarda o save: tabela `saves` (um registro JSON por jogador), protegida por RLS (cada um só lê e grava o próprio).

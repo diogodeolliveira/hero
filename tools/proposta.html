@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hero · Proposta visual "Noite na Guilda"</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jersey+15&family=Rubik:wght@400;500;600;700;800&display=swap">
+  <style>
+    /* ===== Proposta de direção visual (prancha de estilo, não é o jogo) ===== */
+    :root {
+      --noite-0: #0b0f1a; --noite-1: #131a2a; --noite-2: #1b2438; --noite-3: #24304a;
+      --bisel-luz: #3d4d70; --bisel-sombra: #070a12; --contorno: #05070d;
+      --texto: #eef1f8; --suave: #9aa6c2; --apagado: #66718e;
+      --brasa: #ff9a3c; --brasa-luz: #ffc070; --brasa-esc: #b8571d;
+      --ouro: #f5c84b; --mana: #5ab0ff; --vida: #63d471; --dano: #ff5a4e;
+      --pergaminho: #e8d9b5; --pergaminho-esc: #b89c68; --tinta: #3b2a17;
+      --rar-comum: #9aa3b5; --rar-raro: #4fa3ff; --rar-epico: #b779ff; --rar-lendario: #f5c84b;
+      --pixel: 'Jersey 15', monospace; --corpo: 'Rubik', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--noite-0); color: var(--texto); font: 400 15px/1.5 var(--corpo); }
+    main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 80px; display: grid; gap: 40px; }
+    h1, h2, h3 { font-family: var(--pixel); font-weight: 400; margin: 0; line-height: 1; letter-spacing: .02em; }
+    h1 { font-size: 64px; } h2 { font-size: 36px; } h3 { font-size: 26px; }
+    .rotulo { font: 700 11px var(--corpo); letter-spacing: .18em; text-transform: uppercase; color: var(--suave); }
+    .sec { display: grid; gap: 16px; }
+    .sec > header { display: grid; gap: 6px; border-bottom: 2px solid var(--noite-3); padding-bottom: 10px; }
+    .sec > header p { color: var(--suave); margin: 0; max-width: 70ch; }
+    .grade { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+    /* Janela de pixel (moldura com bisel, cantos chanfrados de 2px) */
+    .janela {
+      position: relative; background: var(--noite-1); padding: 16px;
+      clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px);
+      box-shadow: inset 0 0 0 2px var(--contorno), inset 4px 4px 0 var(--bisel-luz), inset -4px -4px 0 var(--bisel-sombra);
+    }
+    .janela--elevada { background: var(--noite-2); }
+    .janela__titulo { margin: -16px -16px 12px; padding: 8px 16px 6px; background: var(--noite-3); box-shadow: inset 0 -2px 0 var(--contorno); display: flex; justify-content: space-between; align-items: center; }
+
+    /* Botões de pixel */
+    .bp {
+      --c: var(--brasa); --cl: var(--brasa-luz); --ce: var(--brasa-esc); --t: #2a1505;
+      font: 400 26px/1 var(--pixel); color: var(--t); background: var(--c); border: 0; cursor: pointer;
+      padding: 12px 22px 10px; display: inline-flex; align-items: center; gap: 10px;
+      clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px);
+      box-shadow: inset 0 0 0 2px var(--contorno), inset 0 4px 0 var(--cl), inset 0 -6px 0 var(--ce);
+      transition: transform .08s;
+    }
+    .bp:hover { filter: brightness(1.08); }
+    .bp:active { transform: translateY(2px); box-shadow: inset 0 0 0 2px var(--contorno), inset 0 -2px 0 var(--ce); }
+    .bp:focus-visible { outline: 3px solid var(--texto); outline-offset: 3px; }
+    .bp--sec { --c: var(--noite-3); --cl: var(--bisel-luz); --ce: var(--bisel-sombra); --t: var(--texto); }
+    .bp--off { --c: #3a3f4d; --cl: #4b5162; --ce: #22262f; --t: #7d8597; cursor: not-allowed; }
+    .bp--grande { font-size: 34px; padding: 16px 28px 14px; }
+
+    /* Menu de comandos com cursor */
+    .menu { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+    .menu button { width: 100%; display: grid; grid-template-columns: 18px 22px 1fr auto; gap: 10px; align-items: center; background: none; border: 0; color: var(--texto); padding: 8px 10px; font: 400 26px/1 var(--pixel); cursor: pointer; text-align: left; }
+    .menu button small { font: 500 13px var(--corpo); color: var(--suave); }
+    .menu button .cursor { visibility: hidden; color: var(--brasa); }
+    .menu button:hover, .menu button.is-sel { background: var(--noite-3); }
+    .menu button:hover .cursor, .menu button.is-sel .cursor { visibility: visible; animation: piscar 1s steps(2) infinite; }
+    @keyframes piscar { 50% { transform: translateX(3px); } }
+    .ip { image-rendering: pixelated; width: 22px; height: 22px; }
+
+    /* Quadro de missões (bilhetes de pergaminho) */
+    .quadro { background: #4a3322; padding: 18px; display: grid; gap: 12px; clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px); box-shadow: inset 0 0 0 2px var(--contorno), inset 4px 4px 0 #6b4b32, inset -4px -4px 0 #2b1c12; }
+    .bilhete { position: relative; background: var(--pergaminho); color: var(--tinta); padding: 12px 14px 10px; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; box-shadow: 0 3px 0 #2b1c12, inset 0 -3px 0 var(--pergaminho-esc); }
+    .bilhete:nth-child(2) { transform: rotate(-.6deg); } .bilhete:nth-child(3) { transform: rotate(.5deg); }
+    .bilhete::before { content: ''; position: absolute; top: -4px; left: 50%; width: 8px; height: 8px; background: #c0392b; box-shadow: 0 2px 0 #7a1f16; }
+    .bilhete b { font: 400 24px/1 var(--pixel); }
+    .bilhete .marcas { display: flex; gap: 4px; }
+    .bilhete .marcas i { width: 12px; height: 12px; background: #cbb88f; box-shadow: inset 0 0 0 2px var(--tinta); }
+    .bilhete .marcas i.ok { background: var(--tinta); }
+    .bilhete .premio { grid-row: 1 / 3; grid-column: 2; font: 400 26px var(--pixel); display: flex; align-items: center; gap: 6px; }
+    .bilhete.is-pronta { background: #fff1c9; }
+    .bilhete.is-pronta .premio { color: #8a4b00; }
+
+    /* Barras em blocos */
+    .barra-px { display: flex; gap: 2px; padding: 2px; background: var(--contorno); }
+    .barra-px i { flex: 1; height: 10px; background: #2a3248; }
+    .barra-px i.on { background: var(--c, var(--mana)); box-shadow: inset 0 3px 0 rgba(255,255,255,.25); }
+
+    /* Card de herói (janela + gema de raridade) */
+    .heroi { display: grid; grid-template-rows: auto auto; width: 180px; }
+    .heroi__palco { height: 150px; display: grid; place-items: end center; position: relative; background: linear-gradient(var(--noite-2), var(--noite-2)) padding-box; }
+    .heroi__palco canvas { image-rendering: pixelated; position: relative; z-index: 1; margin-bottom: 14px; }
+    .heroi__palco::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 38px; background: repeating-linear-gradient(90deg, #22304a 0 8px, #1d293f 8px 16px); box-shadow: inset 0 2px 0 #2f3f5f; }
+    .gema { position: absolute; top: 10px; left: 10px; width: 14px; height: 14px; background: var(--rar); transform: rotate(45deg); box-shadow: 0 0 0 2px var(--contorno), inset 3px 3px 0 rgba(255,255,255,.5); z-index: 2; }
+    .heroi__info { padding: 10px 12px 12px; display: grid; gap: 4px; }
+    .heroi__info b { font: 400 26px/1 var(--pixel); }
+    .heroi__info small { color: var(--rar); font-weight: 600; font-size: 12px; }
+    .heroi__nums { display: flex; justify-content: space-between; font: 400 20px var(--pixel); color: var(--suave); }
+    .heroi__nums span { display: inline-flex; align-items: center; gap: 4px; }
+    .heroi .ip { width: 16px; height: 16px; }
+
+    /* Estandartes da batalha */
+    .estandartes { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 8px; }
+    .estandarte { padding: 10px 14px 18px; display: grid; gap: 6px; clip-path: polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%); }
+    .estandarte--ali { background: #1f3a6b; box-shadow: inset 0 0 0 2px var(--contorno), inset 0 4px 0 #2f5597; }
+    .estandarte--ini { background: #5b1d22; box-shadow: inset 0 0 0 2px var(--contorno), inset 0 4px 0 #84303a; text-align: right; }
+    .estandarte b { font: 400 26px/1 var(--pixel); }
+    .vs { font: 400 40px/1 var(--pixel); color: var(--brasa); padding-top: 10px; }
+
+    /* Cena */
+    .cena { position: relative; overflow: hidden; background: var(--noite-0); box-shadow: inset 0 0 0 2px var(--contorno); }
+    .cena canvas { display: block; image-rendering: pixelated; margin: 0 auto; }
+    .cena__sobre { position: absolute; left: 16px; right: 16px; top: 16px; display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap; }
+
+    @media (max-width: 700px) {
+      .cena { display: grid; grid-template-columns: minmax(0, 1fr); }
+      .cena canvas { justify-self: center; }
+      .cena__sobre { position: static; padding: 12px; display: grid; }
+      .cena__sobre .bp { justify-content: center; }
+    }
+    .amostras { display: flex; flex-wrap: wrap; gap: 10px; }
+    .amostra { width: 112px; display: grid; gap: 6px; font-size: 12px; }
+    .amostra i { height: 56px; display: block; box-shadow: inset 0 0 0 2px var(--contorno); }
+    .amostra b { font-weight: 700; }
+    .amostra span { color: var(--suave); }
+    .tipo { display: grid; gap: 14px; }
+    .tipo .linha { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+    .antes-depois { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .antes-depois li { margin: 0; }
+    ul.lista { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--suave); }
+    ul.lista b { color: var(--texto); }
+  </style>
+</head>
+<body>
+<main>
+  <section class="sec">
+    <header>
+      <span class="rotulo">Hero · Proposta de direção visual</span>
+      <h1>Noite na Guilda</h1>
+      <p>O jogo como o salão de uma guilda à noite: a fogueira acesa, a equipe reunida e o quadro de missões na parede. A interface fala a mesma língua do pixel art dos heróis: janelas de menu de RPG clássico, letras de pixel, cores de noite e fogo.</p>
+    </header>
+    <div class="cena" id="cena-wrap">
+      <canvas id="cena"></canvas>
+      <div class="cena__sobre">
+        <div class="janela" style="min-width:240px">
+          <span class="rotulo">Guilda · Nível 3</span>
+          <h2 style="margin:6px 0 10px">Ordem do Carvalho</h2>
+          <div class="barra-px" style="--c:var(--mana)"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+          <span class="rotulo" style="display:block;margin-top:6px">120 / 200 XP</span>
+        </div>
+        <button class="bp bp--grande"><canvas class="ip" data-ic="espada"></canvas>Continuar aventura</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <header><span class="rotulo">1 · Paleta</span><h2>Noite, fogo e ouro</h2>
+      <p>Base azul-noite (sai o roxo). Uma cor por significado: <b>brasa</b> = agir, <b>ouro</b> = recompensa e lendário, <b>mana</b> = XP, verde e vermelho = vida. Sem gradientes: profundidade vem do bisel de 2px.</p></header>
+    <div class="amostras" id="amostras"></div>
+  </section>
+
+  <section class="sec">
+    <header><span class="rotulo">2 · Tipografia</span><h2>Letra de pixel + texto limpo</h2>
+      <p><b>Jersey 15</b> (pixel, condensada) para títulos, nomes, números e botões: casa com os sprites. <b>Rubik</b> para textos e descrições: legível em tamanho pequeno. Nada abaixo de 12px.</p></header>
+    <div class="janela tipo">
+      <div class="linha"><h1>Fase 5 · Chefe</h1></div>
+      <div class="linha"><h2>Isolde, Rainha de Aço</h2><span class="rotulo">Título · Jersey 36</span></div>
+      <div class="linha"><span style="font:400 30px var(--pixel)">1.280 · 2.638 · 96</span><span class="rotulo">Números · Jersey 30</span></div>
+      <p style="max-width:56ch">A cada 3 turnos, golpe de 130% e escudo de 20% da vida. Texto corrido em Rubik 15/1.5, cor clara sobre noite com contraste AA.</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <header><span class="rotulo">3 · Componentes</span><h2>Janelas, comandos e botões</h2>
+      <p>Tudo nasce de uma única janela de pixel (contorno, bisel claro em cima, escuro embaixo, cantos chanfrados). O menu de comandos com cursor substitui a grade de atalhos genérica. Ícones desenhados em pixel no mesmo sistema dos heróis.</p></header>
+    <div class="grade">
+      <div class="janela">
+        <div class="janela__titulo"><h3>Comandos</h3><span class="rotulo">Menu</span></div>
+        <ul class="menu">
+          <li><button class="is-sel"><span class="cursor">▶</span><canvas class="ip" data-ic="espada"></canvas>Aventura<small>Fase 5</small></button></li>
+          <li><button><span class="cursor">▶</span><canvas class="ip" data-ic="escudo"></canvas>Equipe<small>5/5</small></button></li>
+          <li><button><span class="cursor">▶</span><canvas class="ip" data-ic="estrela"></canvas>Invocar<small>11/46</small></button></li>
+          <li><button><span class="cursor">▶</span><canvas class="ip" data-ic="pergaminho"></canvas>Heróis<small>Coleção</small></button></li>
+        </ul>
+      </div>
+      <div class="janela janela--elevada" style="display:grid;gap:14px;align-content:start">
+        <span class="rotulo">Botões · repouso, secundário, desativado</span>
+        <div><button class="bp"><canvas class="ip" data-ic="espada"></canvas>Batalhar</button></div>
+        <div><button class="bp bp--sec"><canvas class="ip" data-ic="escudo"></canvas>Ajustar equipe</button></div>
+        <div><button class="bp bp--off" disabled><canvas class="ip" data-ic="moeda"></canvas>2.800</button></div>
+        <span class="rotulo">Vida · em blocos</span>
+        <div class="barra-px" style="--c:var(--vida)"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="quadro">
+        <h3 style="color:var(--pergaminho)">Quadro de missões</h3>
+        <div class="bilhete is-pronta"><b>Vença 3 batalhas</b><div class="marcas"><i class="ok"></i><i class="ok"></i><i class="ok"></i></div><span class="premio"><canvas class="ip" data-ic="moeda"></canvas>300</span></div>
+        <div class="bilhete"><b>Invoque 1 herói</b><div class="marcas"><i></i></div><span class="premio"><canvas class="ip" data-ic="moeda"></canvas>150</span></div>
+        <div class="bilhete"><b>Derrote 12 monstros</b><div class="marcas"><i class="ok"></i><i class="ok"></i><i></i><i></i></div><span class="premio"><canvas class="ip" data-ic="moeda"></canvas>250</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <header><span class="rotulo">4 · Heróis e batalha</span><h2>Palco, gema e estandartes</h2>
+      <p>O herói fica num palco de pedra, não num gradiente. A raridade vira uma gema (forma + cor, não só cor da borda). Na batalha saem as faixas amarela e vermelha de placar de futebol, entram estandartes de guilda contra monstros.</p></header>
+    <div class="grade" style="align-items:start">
+      <div style="display:flex;gap:16px;flex-wrap:wrap" id="cards"></div>
+      <div class="estandartes">
+        <div class="estandarte estandarte--ali"><span class="rotulo" style="color:#9cc0ff">Guilda</span><b>Ordem do Carvalho</b><div class="barra-px" style="--c:var(--vida)"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="vs">VS</div>
+        <div class="estandarte estandarte--ini"><span class="rotulo" style="color:#ff9ea4">Chefe · Fase 5</span><b>Wyrm Jovem</b><div class="barra-px" style="--c:var(--dano)"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <header><span class="rotulo">5 · O que muda em relação à versão atual</span><h2>Auditoria → proposta</h2></header>
+    <ul class="lista antes-depois">
+      <li><b>Cards iguais em tudo</b> (mesma borda, raio, fundo) → poucos componentes com papel claro: cena, menu de comandos, quadro de missões, palco do herói.</li>
+      <li><b>Ícones de traço fino estilo SaaS</b> → ícones em pixel, do mesmo sistema dos sprites.</li>
+      <li><b>Cinzel + Inter</b> (serifa elegante ao lado de pixel art) → Jersey 15 + Rubik.</li>
+      <li><b>Roxo + grade quadriculada de fundo + dourado para tudo</b> → noite azul, sem grade, uma cor por significado.</li>
+      <li><b>Cenas ampliadas e borradas</b> (ruído verde atrás do texto) → cenas compostas em escala inteira, com céu, horizonte e luz, e texto sempre numa janela.</li>
+      <li><b>Placar de futebol na batalha</b> → estandartes, campo com fundo (árvores, muralha, horizonte) e vida em blocos.</li>
+      <li><b>Texto de 10–11px</b> em vários pontos → mínimo de 12px; números em fonte de pixel maior.</li>
+      <li><b>Mantido:</b> todas as funções, telas, save, nuvem, regras, missões, XP e sprites.</li>
+    </ul>
+  </section>
+</main>
+
+<script src="../js/dados.js"></script>
+<script src="../js/bonecos.js"></script>
+<script src="../js/sprites.js"></script>
+<script>
+// ---------- ícones de pixel (grade 11×11) ----------
+const ICONES_PX = {
+  espada: ['........ww.', '.......wWw.', '......wWw..', '.....wWw...', '....wWw....', '.g.wWw.....', '.ggWw......', '..gg.......', '.gLgg......', 'gL..g......', 'L..........'],
+  escudo: ['.mmmmmmmmm.', 'mrrrrgrrrrm', 'mrrrrgrrrrm', 'mgggggggggm', 'mrrrrgrrrrm', 'mrrrrgrrrrm', '.mrrrgrrrm.', '.mrrrgrrrm.', '..mrrgrrm..', '...mrgrm...', '....mmm....'],
+  estrela: ['.....g.....', '....ggg....', '....gGg....', 'gggggGggggg', '.ggGGGGGgg.', '..ggGGGgg..', '...gGGGg...', '..ggg.ggg..', '..gg...gg..', '.gg.....gg.', '...........'],
+  pergaminho: ['.pppppppp..', 'pPPPPPPPPp.', '.pttttttp..', '.pPPPPPPp..', '.pttttp.p..', '.pPPPPPPp..', '.pttttttp..', '.pPPPPPPp..', 'pPPPPPPPPp.', '.pppppppp..', '...........'],
+  moeda: ['...gggg....', '..gGGGGg...', '.gGgggGGg..', '.gGgGGgGg..', '.gGgGGgGg..', '.gGgGGgGg..', '.gGgggGGg..', '..gGGGGg...', '...gggg....', '...........', '...........'],
+};
+const PAL_PX = { w: '#e8eef6', W: '#a9b6c8', g: '#f5c84b', G: '#c58f1c', L: '#7a4a24', m: '#a9b6c8', r: '#c8402e', p: '#b89c68', P: '#e8d9b5', t: '#6b5236' };
+function iconePx(nome) {
+  const g = ICONES_PX[nome], c = document.createElement('canvas'); c.width = 13; c.height = 13;
+  const x = c.getContext('2d');
+  const cheio = (X, Y) => g[Y] && g[Y][X] && g[Y][X] !== '.';
+  x.fillStyle = '#05070d';
+  for (let Y = -1; Y <= 11; Y++) for (let X = -1; X <= 11; X++) if (!cheio(X, Y) && (cheio(X - 1, Y) || cheio(X + 1, Y) || cheio(X, Y - 1) || cheio(X, Y + 1))) x.fillRect(X + 1, Y + 1, 1, 1);
+  g.forEach((l, Y) => l.split('').forEach((ch, X) => { if (ch !== '.') { x.fillStyle = PAL_PX[ch]; x.fillRect(X + 1, Y + 1, 1, 1); } }));
+  return c;
+}
+document.querySelectorAll('canvas[data-ic]').forEach(el => { const c = iconePx(el.dataset.ic); el.width = 13; el.height = 13; el.getContext('2d').drawImage(c, 0, 0); });
+
+// ---------- paleta ----------
+[['--noite-0', 'Noite', 'fundo'], ['--noite-1', 'Janela', 'painéis'], ['--noite-3', 'Janela alta', 'títulos'], ['--brasa', 'Brasa', 'ação principal'],
+ ['--ouro', 'Ouro', 'recompensa, lendário'], ['--mana', 'Mana', 'XP, informação'], ['--vida', 'Vida', 'aliados'], ['--dano', 'Dano', 'inimigos, erro'],
+ ['--pergaminho', 'Pergaminho', 'missões']].forEach(([v, n, u]) => {
+  document.getElementById('amostras').insertAdjacentHTML('beforeend', `<div class="amostra"><i style="background:var(${v})"></i><b>${n}</b><span>${u}</span></div>`);
+});
+
+// ---------- cards de herói ----------
+const exemplos = [HEROIS.find(h => h.nome === 'Isolde'), HEROIS.find(h => h.nome === 'Ignarax'), HEROIS.find(h => h.nome === 'Wren')];
+exemplos.forEach(h => {
+  const q = Sprites.quadros(aparenciaHeroi(h)).parado;
+  const esc = 4;
+  const div = document.createElement('div');
+  div.className = 'janela heroi'; div.style.padding = '0'; div.style.setProperty('--rar', `var(--rar-${h.rar})`);
+  div.innerHTML = `<div class="heroi__palco"><span class="gema"></span></div>
+    <div class="heroi__info"><b>${h.nome}</b><small>${h.titulo || CLASSES[h.classe].nome}</small>
+    <div class="heroi__nums"><span><canvas class="ip" data-ic2="espada"></canvas>${h.atk}</span><span><canvas class="ip" data-ic2="escudo"></canvas>${h.def}</span></div></div>`;
+  const c = document.createElement('canvas'); c.width = q.width * esc; c.height = q.height * esc;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(q, 0, 0, c.width, c.height);
+  div.querySelector('.heroi__palco').append(c);
+  div.querySelectorAll('canvas[data-ic2]').forEach(el => { el.width = 13; el.height = 13; el.getContext('2d').drawImage(iconePx(el.dataset.ic2), 0, 0); });
+  document.getElementById('cards').append(div);
+});
+
+// ---------- cena: salão da guilda à noite, com fogueira ----------
+const W = 256, H = 112;
+const cv = document.getElementById('cena'), ctx = cv.getContext('2d');
+cv.width = W; cv.height = H;
+function ajustar() { const s = Math.max(2, Math.floor(document.getElementById('cena-wrap').clientWidth / W)); cv.style.width = W * s + 'px'; cv.style.height = H * s + 'px'; }
+ajustar(); addEventListener('resize', ajustar);
+const r = criarRng(42);
+const estrelas = Array.from({ length: 50 }, () => [Math.floor(r() * W), Math.floor(r() * 50), r()]);
+const equipe = ['Isolde', 'Ysolde', 'Ignarax', 'Wren', 'Seraphine'].map(n => Sprites.quadros(aparenciaHeroi(HEROIS.find(h => h.nome === n))).parado);
+function montanha(base, alt, cor, seed) {
+  const rr = criarRng(seed); ctx.fillStyle = cor; let y = base;
+  for (let x = 0; x < W; x++) { y += Math.round((rr() - 0.5) * 3); y = Math.max(base - alt, Math.min(base, y)); ctx.fillRect(x, y, 1, H - y); }
+}
+function desenhar(t) {
+  ['#0b0f1a', '#0e1424', '#111a2e', '#152038', '#1a2742'].forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(0, i * 12, W, 12); });
+  estrelas.forEach(([x, y, f]) => { ctx.fillStyle = Math.sin(t / 600 + f * 10) > 0.6 ? '#ffffff' : '#7f8db0'; ctx.fillRect(x, y, 1, 1); });
+  ctx.fillStyle = '#f2ecd0'; ctx.fillRect(206, 10, 10, 10); ctx.fillRect(205, 12, 12, 6); ctx.fillStyle = '#1a2742'; ctx.fillRect(203, 9, 6, 8);
+  montanha(58, 18, '#1b2540', 7); montanha(68, 14, '#16203a', 11);
+  ctx.fillStyle = '#1d2a1f'; ctx.fillRect(0, 72, W, H - 72);
+  for (let x = 0; x < W; x += 8) { ctx.fillStyle = (x / 8) % 2 ? '#22311f' : '#1f2d1c'; ctx.fillRect(x, 72, 8, H - 72); }
+  for (let i = 0; i < 40; i++) { const rr = criarRng(i); ctx.fillStyle = '#2c3f27'; ctx.fillRect(Math.floor(rr() * W), 74 + Math.floor(rr() * 36), 2, 1); }
+  // luz da fogueira em faixas
+  const fx = 128, fy = 92, pulso = Math.sin(t / 140) * 1.5;
+  [[62, 'rgba(255,154,60,.06)'], [44, 'rgba(255,154,60,.08)'], [28, 'rgba(255,170,80,.1)']].forEach(([raio, cor]) => {
+    ctx.fillStyle = cor; ctx.beginPath(); ctx.ellipse(fx, fy, raio + pulso, (raio + pulso) * 0.42, 0, 0, 7); ctx.fill();
+  });
+  // heróis em volta
+  const pos = [[64, 98], [92, 94], [168, 96], [196, 94], [222, 99]];
+  equipe.forEach((q, i) => {
+    const [x, y] = pos[i];
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(x - 7, y - 1, 14, 2);
+    ctx.drawImage(q, Math.round(x - q.width / 2), Math.round(y - q.height + (Math.sin(t / 400 + i) > 0.7 ? -1 : 0)));
+  });
+  // fogueira
+  ctx.fillStyle = '#5a3a22'; ctx.fillRect(fx - 7, fy - 1, 14, 3); ctx.fillStyle = '#3a2516'; ctx.fillRect(fx - 5, fy + 1, 10, 2);
+  const chama = [[0, -2, '#ff5a2a'], [-2, -4, '#ff9a3c'], [1, -5, '#ffc070'], [0, -7, '#ffe6a0']];
+  chama.forEach(([dx, dy, c], i) => { const f = Math.floor(Math.sin(t / 90 + i * 2) * 1.2); ctx.fillStyle = c; ctx.fillRect(fx - 3 + dx + f, fy + dy - (i ? 0 : 0), 6 - i, 3); });
+  if (Math.sin(t / 70) > 0.4) { ctx.fillStyle = '#ffc070'; ctx.fillRect(fx + Math.floor(Math.sin(t / 50) * 4), fy - 12 - Math.floor((t / 30) % 8), 1, 1); }
+  requestAnimationFrame(desenhar);
+}
+requestAnimationFrame(desenhar);
+</script>
+</body>
+</html>

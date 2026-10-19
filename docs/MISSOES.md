@@ -32,7 +32,7 @@ Legenda de prioridade: 🔴 alta · 🟡 média · 🟢 baixa
 ### Visual e som
 - [ ] 🟡 Placar de líderes (maior fase alcançada) usando o Supabase.
 - [ ] 🟡 Batalha validada no servidor (Edge Function) para evitar trapaça; hoje quem calcula é o navegador.
-- [ ] 🟢 Animações nos bonecos (respirar, atacar com a arma, cair).
+- [ ] 🟡 Arte extra para animação mais rica: braços separados (cotovelo), vista de lado/costas, quadros de golpe desenhados à mão, expressões.
 - [ ] 🟡 Efeitos de habilidade diferentes por classe (fogo, flecha, luz).
 - [ ] 🟢 Sons e música.
 - [ ] 🟢 Tela de vitória mais caprichada.
@@ -57,6 +57,7 @@ Legenda de prioridade: 🔴 alta · 🟡 média · 🟢 baixa
 - [x] 2026-10-18 · Bonecos: personagem desenhado para cada classe, com aparência única por herói; monstros também desenhados.
 - [x] 2026-10-18 · Código do save na nuvem (Supabase): conta anônima automática, vincular e-mail e entrar em outro aparelho.
 - [x] 2026-10-18 · Repositório no GitHub: github.com/diogodeolliveira/Hero.
+- [x] 2026-10-19 · Animação dos personagens: esqueleto por partes, repouso, andar, ataques e habilidades por classe, dano, defesa, cura, vitória, derrota, cansaço, entrada na invocação, apresentação, transição na equipe e suporte a movimento reduzido.
 - [x] 2026-10-18 · Redesign completo da interface: sistema de design, ícones próprios, painel de aventura, XP e nível da guilda, missões diárias, arena com painéis de equipe, tela de resultado, catálogo com filtros, detalhe com escalação, comparação de atributos, vitrine de invocação.
 - [x] 2026-10-18 · Personagens refeitos em pixel art desenhado à mão (moldes por classe, sombra e brilho, contorno); monstros com armaduras próprias.
 - [x] 2026-10-18 · Campo de batalha em pixel art com câmera de cima: personagens andam, atacam, disparam flechas e magias, caem; cenário muda por região; placar e narração.
